@@ -194,7 +194,7 @@
     <div id="admin-login">
         <div class="login-box">
             <h2><i class="fa-solid fa-lock text-primary"></i> คัดกรองสิทธิ์แอดมิน</h2>
-            <p style="color: var(--text-medium); margin-top: 8px; font-size: 14px;">กำลังตรวจสอบสิทธิ์อีเมลของคุณ...</p>
+            <p id="checking-text" style="color: var(--text-medium); margin-top: 8px; font-size: 14px;">กำลังตรวจสอบสิทธิ์อีเมลของคุณ...</p>
             <div style="margin-top: 20px;">
                 <i class="fa-solid fa-circle-notch fa-spin text-primary" style="font-size: 24px;"></i>
             </div>
@@ -326,6 +326,9 @@
             if (spinnerWrapper && spinnerWrapper.parentElement) {
                 spinnerWrapper.parentElement.style.display = 'none';
             }
+            const checkingText = document.getElementById('checking-text');
+            if (checkingText) checkingText.style.display = 'none';
+            
             const debugEl = document.getElementById('debug-email');
             if (debugEl) debugEl.textContent = '(Timeout/Error)';
             const errEl = document.getElementById('login-error');
@@ -384,6 +387,9 @@
             if (spinnerWrapper && spinnerWrapper.parentElement) {
                 spinnerWrapper.parentElement.style.display = 'none';
             }
+            const checkingText = document.getElementById('checking-text');
+            if (checkingText) checkingText.style.display = 'none';
+            
             document.getElementById('debug-email').textContent = currentUser || '(ไม่ได้ล็อกอิน)';
             document.getElementById('login-error').style.display = 'block';
         });
