@@ -442,7 +442,17 @@
                         
                         // Set Avatar
                         const customImage = localStorage.getItem('profileImage');
-                        const googleImage = localStorage.getItem('googleProfilePic');
+                        let googleImage = localStorage.getItem('googleProfilePic');
+                        
+                        // Fallback to Supabase session metadata if available
+                        if (!googleImage) {
+                            const { data: sessionData } = await supabase.auth.getSession();
+                            if (sessionData?.session?.user?.user_metadata?.avatar_url) {
+                                googleImage = sessionData.session.user.user_metadata.avatar_url;
+                                localStorage.setItem('googleProfilePic', googleImage);
+                            }
+                        }
+                        
                         const defaultImage = `https://ui-avatars.com/api/?name=${data.name || 'U'}&background=0D8BFF&color=fff`;
                         
                         document.getElementById('profile-avatar').src = customImage || googleImage || defaultImage;

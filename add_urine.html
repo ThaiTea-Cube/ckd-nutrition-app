@@ -111,22 +111,17 @@
                 <p style="color: var(--text-medium); font-size: 15px; margin-bottom: 0;" id="date-display">กำลังโหลดวันที่...</p>
             </div>
 
-            <!-- Acoustic Estimation (Beta) -->
-            <div class="acoustic-estimation-card" style="margin-bottom: 24px; padding: 16px; background: rgba(13, 139, 255, 0.05); border-radius: 12px; border: 1px dashed var(--primary-color);">
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin-bottom: 8px;"><i class="fa-solid fa-microphone"></i> กะปริมาณจากเสียง (BETA)</h3>
-                <p style="font-size: 13px; color: var(--text-medium); margin-bottom: 16px; line-height: 1.4;">ประเมินคร่าวๆ จากความยาวของเสียง <span style="color: var(--error-base); font-weight: 500;">ไม่สามารถทดแทนการตวงจริงได้</span></p>
+            <!-- AI Voice Input -->
+            <div class="ai-voice-card" style="margin-bottom: 24px; padding: 16px; background: rgba(13, 139, 255, 0.05); border-radius: 12px; border: 1px dashed var(--primary-color);">
+                <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin-bottom: 8px;"><i class="fa-solid fa-microphone"></i> สั่งงานด้วยเสียงด้วย AI ✨</h3>
+                <p style="font-size: 13px; color: var(--text-medium); margin-bottom: 16px; line-height: 1.4;">ลองพูดว่า: <span style="font-style: italic; color: var(--text-dark);">"ฉี่สีเหลืองเข้ม ปริมาณประมาณหนึ่งแก้วน้ำ"</span> แล้วให้ AI ช่วยคำนวณให้</p>
                 
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 8px;">
-                    <button id="record-btn" style="width: 72px; height: 72px; border-radius: 50%; background: var(--surface-color); border: 2px solid var(--primary-color); color: var(--primary-color); font-size: 28px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center;">
+                    <button id="voice-btn" style="width: 72px; height: 72px; border-radius: 50%; background: var(--surface-color); border: 2px solid var(--primary-color); color: var(--primary-color); font-size: 28px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center;">
                         <i class="fa-solid fa-microphone"></i>
                     </button>
-                    <div id="record-status" style="margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--primary-color);">กดเพื่อเริ่มฟังเสียง</div>
-                    <div id="flow-timer" style="font-size: 28px; font-weight: 700; color: var(--text-high); display: none; margin-top: 8px;">0.0 <span style="font-size: 16px; color: var(--text-medium); font-weight: 500;">วินาที</span></div>
-                    
-                    <!-- Simple visualizer bar -->
-                    <div id="visualizer-container" style="width: 100%; height: 8px; background: rgba(0,0,0,0.05); border-radius: 4px; margin-top: 16px; overflow: hidden; display: none;">
-                        <div id="visualizer-bar" style="height: 100%; width: 0%; background: var(--primary-color); transition: width 0.1s, background-color 0.2s;"></div>
-                    </div>
+                    <div id="voice-status" style="margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--primary-color);">กดเพื่อพูด</div>
+                    <div id="voice-text-display" style="font-size: 14px; font-style: italic; color: var(--text-high); display: none; margin-top: 8px; text-align: center; max-width: 90%;">...</div>
                 </div>
             </div>
 
@@ -278,136 +273,133 @@
                 }, 3000);
             }
             
-            // --- Acoustic Estimation Logic (POC) ---
-            let audioContext;
-            let mediaStreamSource;
-            let analyser;
-            let isRecording = false;
-            let flowDurationMs = 0;
-            let animationId;
-            const recordBtn = document.getElementById('record-btn');
-            const recordStatus = document.getElementById('record-status');
-            const flowTimer = document.getElementById('flow-timer');
-            const visualizerContainer = document.getElementById('visualizer-container');
-            const visualizerBar = document.getElementById('visualizer-bar');
+            // --- AI Voice Estimation Logic ---
+            const voiceBtn = document.getElementById('voice-btn');
+            const voiceStatus = document.getElementById('voice-status');
+            const voiceTextDisplay = document.getElementById('voice-text-display');
+            let recognition = null;
+            let isListening = false;
 
-            recordBtn.addEventListener('click', async () => {
-                if (!isRecording) {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                        startRecording(stream);
-                    } catch (err) {
-                        showToast('กรุณาอนุญาตให้แอปใช้งานไมโครโฟน', 'error');
-                        console.error('Mic error:', err);
-                    }
-                } else {
-                    stopRecording();
-                }
-            });
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.lang = 'th-TH'; // Thai
+                recognition.continuous = false;
+                recognition.interimResults = false;
 
-            function startRecording(stream) {
-                isRecording = true;
-                flowDurationMs = 0;
-                
-                // UI Updates
-                recordBtn.style.backgroundColor = 'var(--error-base)';
-                recordBtn.style.borderColor = 'var(--error-base)';
-                recordBtn.style.color = 'white';
-                recordBtn.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.4)';
-                recordBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
-                recordStatus.textContent = 'กำลังฟังเสียง... (กดเพื่อหยุด)';
-                flowTimer.style.display = 'block';
-                flowTimer.innerHTML = '0.0 <span style="font-size: 16px; color: var(--text-medium); font-weight: 500;">วินาที</span>';
-                visualizerContainer.style.display = 'block';
-                
-                // Audio Setup
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
-                
-                mediaStreamSource = audioContext.createMediaStreamSource(stream);
-                mediaStreamSource.connect(analyser);
-                
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-                
-                let lastTimestamp = performance.now();
-                
-                function analyzeAudio(timestamp) {
-                    if (!isRecording) return;
+                recognition.onstart = function() {
+                    isListening = true;
+                    voiceBtn.style.backgroundColor = 'var(--error-base)';
+                    voiceBtn.style.borderColor = 'var(--error-base)';
+                    voiceBtn.style.color = 'white';
+                    voiceBtn.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.4)';
+                    voiceBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+                    voiceStatus.textContent = 'กำลังฟังเสียง... (พูดจบแล้วกดหยุด)';
+                    voiceTextDisplay.style.display = 'block';
+                    voiceTextDisplay.textContent = 'กำลังฟัง...';
+                };
+
+                recognition.onresult = async function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    voiceTextDisplay.textContent = `"${transcript}"`;
+                    voiceStatus.textContent = 'กำลังประมวลผลด้วย AI...';
                     
-                    analyser.getByteFrequencyData(dataArray);
-                    
-                    // Calculate average volume
-                    let sum = 0;
-                    for(let i = 0; i < bufferLength; i++) {
-                        sum += dataArray[i];
-                    }
-                    let average = sum / bufferLength;
-                    
-                    // Update visualizer (scale average 0-255 to 0-100%)
-                    const volumePercent = Math.min(100, (average / 128) * 100);
-                    visualizerBar.style.width = volumePercent + '%';
-                    
-                    // Threshold for "splashing sound"
-                    const THRESHOLD = 20; 
-                    
-                    const deltaMs = timestamp - lastTimestamp;
-                    lastTimestamp = timestamp;
-                    
-                    if (average > THRESHOLD) {
-                        flowDurationMs += deltaMs;
-                        visualizerBar.style.backgroundColor = 'var(--success-color)';
+                    await processTextWithGemini(transcript);
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error', event.error);
+                    showToast('เกิดข้อผิดพลาดในการฟังเสียง: ' + event.error, 'error');
+                    resetVoiceUI();
+                };
+
+                recognition.onend = function() {
+                    if (isListening) resetVoiceUI();
+                };
+
+                voiceBtn.addEventListener('click', () => {
+                    if (isListening) {
+                        recognition.stop();
                     } else {
-                        visualizerBar.style.backgroundColor = 'var(--primary-color)';
+                        recognition.start();
                     }
-                    
-                    flowTimer.innerHTML = (flowDurationMs / 1000).toFixed(1) + ' <span style="font-size: 16px; color: var(--text-medium); font-weight: 500;">วินาที</span>';
-                    
-                    animationId = requestAnimationFrame(analyzeAudio);
-                }
-                
-                animationId = requestAnimationFrame(analyzeAudio);
+                });
+            } else {
+                voiceBtn.addEventListener('click', () => {
+                    showToast('เบราว์เซอร์หรืออุปกรณ์ของคุณไม่รองรับการสั่งงานด้วยเสียง (Speech API)', 'error');
+                });
             }
 
-            function stopRecording() {
-                isRecording = false;
-                cancelAnimationFrame(animationId);
-                
-                if (mediaStreamSource) {
-                    mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
-                    mediaStreamSource.disconnect();
+            function resetVoiceUI() {
+                isListening = false;
+                voiceBtn.style.backgroundColor = 'var(--surface-color)';
+                voiceBtn.style.borderColor = 'var(--primary-color)';
+                voiceBtn.style.color = 'var(--primary-color)';
+                voiceBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.05)';
+                voiceBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+                if(voiceStatus.textContent !== 'กำลังประมวลผลด้วย AI...') {
+                    voiceStatus.textContent = 'กดเพื่อพูดใหม่';
                 }
-                if (audioContext) {
-                    audioContext.close();
+            }
+            
+            async function processTextWithGemini(text) {
+                let apiKey = localStorage.getItem('gemini_api_key');
+                if (!apiKey) {
+                    showToast('กรุณาตั้งค่า API Key ก่อนใช้งาน (ตั้งที่หน้า เพิ่มเมนู > กำหนดเอง)', 'error');
+                    voiceStatus.textContent = 'เกิดข้อผิดพลาด';
+                    return;
                 }
                 
-                // UI Reset
-                recordBtn.style.backgroundColor = 'var(--surface-color)';
-                recordBtn.style.borderColor = 'var(--primary-color)';
-                recordBtn.style.color = 'var(--primary-color)';
-                recordBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.05)';
-                recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
-                recordStatus.textContent = 'กดเพื่อเริ่มฟังเสียงใหม่';
-                visualizerContainer.style.display = 'none';
-                
-                // Calculate Volume (approx 15ml per second of active sound)
-                const totalSeconds = flowDurationMs / 1000;
-                // Add a small base amount if any sound was detected to avoid 0ml for quick tests
-                const estimatedMl = totalSeconds > 0 ? Math.round(totalSeconds * 15) : 0;
-                
-                if (estimatedMl > 0) {
-                    urineInput.value = estimatedMl;
-                    showToast(`ประเมินปริมาตรได้ประมาณ ${estimatedMl} มล.`, 'success');
+                try {
+                    voiceBtn.disabled = true;
                     
-                    // Highlight input to show it was auto-filled
-                    urineInput.style.transition = 'background-color 0.5s';
-                    urineInput.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
-                    setTimeout(() => {
-                        urineInput.style.backgroundColor = 'transparent';
-                    }, 1500);
-                } else {
-                    showToast('ไม่พบเสียงปัสสาวะที่ชัดเจนพอ โปรดพิมพ์กรอกเอง', 'error');
+                    const promptText = `Extract urine volume from this Thai text: "${text}". 
+Return ONLY a valid JSON object with the key "volume_ml" (integer in milliliters).
+If the text mentions "แก้ว" (glass), assume 250. If "ขวด" (bottle), assume 500. If "ลิตร" (liter), convert to ml. If "ซีซี" (cc), it is ml.
+If no volume is mentioned or it's nonsense, return {"error": "not found"}. Do not return markdown.`;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: promptText }] }],
+                            generationConfig: { maxOutputTokens: 100 }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error.message || 'API Error');
+                    }
+                    
+                    let resultText = data.candidates[0].content.parts[0].text;
+                    resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    
+                    const result = JSON.parse(resultText);
+                    
+                    if (result.error) {
+                        throw new Error("AI ไม่พบปริมาตรในประโยคที่คุณพูด กรุณาลองพูดให้ชัดเจนขึ้น");
+                    }
+                    
+                    if (result.volume_ml) {
+                        urineInput.value = result.volume_ml;
+                        showToast(`AI ประเมินได้: ${result.volume_ml} มล.`, 'success');
+                        voiceStatus.textContent = 'วิเคราะห์เสร็จสิ้น ✨';
+                        
+                        urineInput.style.transition = 'background-color 0.5s';
+                        urineInput.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                        setTimeout(() => {
+                            urineInput.style.backgroundColor = 'transparent';
+                        }, 1500);
+                    }
+                    
+                } catch (err) {
+                    console.error("AI Error:", err);
+                    showToast(err.message || 'ไม่สามารถวิเคราะห์ข้อมูลได้', 'error');
+                    voiceStatus.textContent = 'กดเพื่อพูดใหม่';
+                } finally {
+                    voiceBtn.disabled = false;
                 }
             }
         });
