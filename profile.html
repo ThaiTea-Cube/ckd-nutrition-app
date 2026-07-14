@@ -350,21 +350,7 @@
             </div>
         </div>
         
-        <div class="card info-card" id="api-key-card" style="margin-bottom: 24px;">
-            <div class="section-title-icon" style="margin: 0 0 16px 0; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
-                <i class="fa-solid fa-robot" style="color: var(--primary-color); background: rgba(13, 139, 255, 0.1); padding: 8px; border-radius: 8px;"></i> ตั้งค่า AI (Gemini API)
-            </div>
-            
-            <p style="font-size: 13px; color: var(--text-medium); margin-bottom: 12px; line-height: 1.5;">
-                แอปพลิเคชันนี้ใช้ <b>Gemini AI</b> ในการวิเคราะห์เมนูอาหารและปัสสาวะ กรุณาใส่ API Key ของคุณเพื่อเปิดใช้งาน
-            </p>
-            
-            <div style="display: flex; gap: 8px;">
-                <input type="password" id="gemini-api-input" class="form-input" placeholder="ใส่ Gemini API Key ที่นี่..." style="flex: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 14px;">
-                <button id="save-api-btn" style="background: var(--primary-color); color: white; border: none; padding: 0 16px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;">บันทึก</button>
-            </div>
-            <p id="api-status" style="font-size: 12px; margin-top: 8px; color: var(--text-medium); display: none;"></p>
-        </div>
+
         
         <div class="logout-btn-container" style="padding-top: 0;">
             <button id="logout-btn" class="btn-logout">
@@ -583,37 +569,7 @@
             }, 1500);
         });
 
-        // API Key Logic
-        const apiKeyInput = document.getElementById('gemini-api-input');
-        const saveApiBtn = document.getElementById('save-api-btn');
-        const apiStatus = document.getElementById('api-status');
-        
-        // Load existing key if any
-        const existingKey = localStorage.getItem('gemini_api_key');
-        if (existingKey) {
-            apiKeyInput.value = existingKey;
-        }
-        
-        saveApiBtn.addEventListener('click', () => {
-            const val = apiKeyInput.value.trim();
-            if (val) {
-                localStorage.setItem('gemini_api_key', val);
-                apiStatus.textContent = 'บันทึก API Key สำเร็จ!';
-                apiStatus.style.color = 'var(--primary-color)';
-                apiStatus.style.display = 'block';
-                showToast('บันทึก API Key เรียบร้อยแล้ว', 'success');
-            } else {
-                localStorage.removeItem('gemini_api_key');
-                apiStatus.textContent = 'ลบ API Key สำเร็จ!';
-                apiStatus.style.color = 'var(--text-medium)';
-                apiStatus.style.display = 'block';
-                showToast('ยกเลิกใช้งาน AI แล้ว', 'success');
-            }
-            
-            setTimeout(() => {
-                apiStatus.style.display = 'none';
-            }, 3000);
-        });
+
 
     </script>
 </body>
