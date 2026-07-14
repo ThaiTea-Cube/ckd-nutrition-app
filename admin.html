@@ -193,11 +193,15 @@
     <!-- Admin Login -->
     <div id="admin-login">
         <div class="login-box">
-            <h2><i class="fa-solid fa-lock text-primary"></i> ระบบแอดมิน</h2>
-            <p style="color: var(--text-medium); margin-top: 8px; font-size: 14px;">กรุณาใส่รหัสผ่านเพื่อเข้าถึงข้อมูล</p>
-            <input type="password" id="admin-password" placeholder="รหัสผ่าน...">
-            <button onclick="checkAdminPassword()">เข้าสู่ระบบ</button>
-            <p id="login-error" style="color: var(--error-base); font-size: 12px; margin-top: 10px; display: none;">รหัสผ่านไม่ถูกต้อง</p>
+            <h2><i class="fa-solid fa-lock text-primary"></i> คัดกรองสิทธิ์แอดมิน</h2>
+            <p style="color: var(--text-medium); margin-top: 8px; font-size: 14px;">กำลังตรวจสอบสิทธิ์อีเมลของคุณ...</p>
+            <div style="margin-top: 20px;">
+                <i class="fa-solid fa-circle-notch fa-spin text-primary" style="font-size: 24px;"></i>
+            </div>
+            <p id="login-error" style="color: var(--error-base); font-size: 14px; margin-top: 20px; display: none;">
+                อีเมลของคุณไม่มีสิทธิ์เข้าถึงระบบหลังบ้าน<br>
+                <a href="index.html" style="color: var(--primary-color); display: inline-block; margin-top: 12px; text-decoration: none;">กลับหน้าหลัก</a>
+            </p>
         </div>
     </div>
 
@@ -274,6 +278,29 @@
                         <div style="font-size: 12px; color: var(--text-medium);">เป้าหมายโซเดียม</div>
                         <strong id="modal-user-sodium-limit">2000</strong> mg
                     </div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-medium);">เป้าหมายโปรตีน</div>
+                        <strong id="modal-user-protein-limit">40</strong> g
+                    </div>
+                </div>
+
+                <!-- Admin Edit Section -->
+                <div style="background: rgba(2, 132, 199, 0.05); padding: 16px; border-radius: var(--radius-sm); border: 1px dashed var(--primary-color); margin-bottom: 24px;">
+                    <h4 style="color: var(--primary-color); margin-bottom: 12px; font-size: 14px;"><i class="fa-solid fa-pen-to-square"></i> ปรับโควต้าผู้ใช้ (สิทธิ์แอดมิน)</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-medium);">โซเดียม (mg)</label>
+                            <input type="number" id="edit-sodium" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-base); color: var(--text-high);">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-medium);">โปรตีน (g)</label>
+                            <input type="number" id="edit-protein" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-base); color: var(--text-high);">
+                        </div>
+                    </div>
+                    <button onclick="saveUserLimits()" style="width: 100%; padding: 10px; background: var(--primary-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        บันทึกการเปลี่ยนแปลง
+                    </button>
+                    <p id="edit-success-msg" style="color: var(--success-color); font-size: 12px; text-align: center; margin-top: 8px; display: none;">บันทึกสำเร็จ!</p>
                 </div>
 
                 <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--primary-color);">กราฟแนวโน้ม (7 วันล่าสุด)</h3>
@@ -290,25 +317,29 @@
     </div>
 
     <script>
+        // รายชื่ออีเมลที่มีสิทธิ์เข้าถึงระบบหลังบ้าน (Admin Emails)
+        const ADMIN_EMAILS = [
+            'chonprecha2006@gmail.com',
+            'chonprecha.sudjai@g.swu.ac.th',
+            'friend@example.com' // <-- เปลี่ยนเป็นอีเมลเพื่อนที่นี่
+        ];
+
         let globalProfiles = [];
         let globalLogs = [];
         let userChartInstance = null;
+        let currentEditingEmail = null;
 
-        // Simple password for demo
-        function checkAdminPassword() {
-            const pwd = document.getElementById('admin-password').value;
-            if (pwd === 'admin1234') { // รหัสผ่านง่ายๆ สำหรับแอดมิน
+        // Auto login check
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUser = localStorage.getItem('currentUserEmail');
+            if (currentUser && ADMIN_EMAILS.includes(currentUser.toLowerCase())) {
                 document.getElementById('admin-login').style.display = 'none';
                 document.getElementById('admin-content').style.display = 'block';
                 loadAdminData();
             } else {
+                document.querySelector('#admin-login .fa-circle-notch').parentElement.style.display = 'none';
                 document.getElementById('login-error').style.display = 'block';
             }
-        }
-        
-        // Listen for Enter key
-        document.getElementById('admin-password').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') checkAdminPassword();
         });
 
         // Set Chart defaults for dark mode support
@@ -509,7 +540,17 @@
             
             let limits = {};
             try { limits = JSON.parse(user.limits || '{}'); } catch(e){}
-            document.getElementById('modal-user-sodium-limit').textContent = limits.sodium || 2000;
+            const sodiumLimit = limits.sodium || 2000;
+            const proteinLimit = limits.protein || 40;
+            
+            document.getElementById('modal-user-sodium-limit').textContent = sodiumLimit;
+            document.getElementById('modal-user-protein-limit').textContent = proteinLimit;
+            
+            // Populate Edit Form
+            currentEditingEmail = email;
+            document.getElementById('edit-sodium').value = sodiumLimit;
+            document.getElementById('edit-protein').value = proteinLimit;
+            document.getElementById('edit-success-msg').style.display = 'none';
             
             // Filter logs for this user
             const userLogs = globalLogs.filter(l => l.email === email);
@@ -579,6 +620,52 @@
         
         function closeUserModal() {
             document.getElementById('user-modal').style.display = 'none';
+            currentEditingEmail = null;
+        }
+
+        async function saveUserLimits() {
+            if (!currentEditingEmail) return;
+            
+            const newSodium = parseInt(document.getElementById('edit-sodium').value) || 2000;
+            const newProtein = parseInt(document.getElementById('edit-protein').value) || 40;
+            
+            const user = globalProfiles.find(p => p.email === currentEditingEmail);
+            if (!user) return;
+            
+            let currentLimits = {};
+            try { currentLimits = JSON.parse(user.limits || '{}'); } catch(e){}
+            
+            currentLimits.sodium = newSodium;
+            currentLimits.protein = newProtein;
+            
+            const limitsStr = JSON.stringify(currentLimits);
+            
+            try {
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({ limits: limitsStr })
+                    .eq('email', currentEditingEmail);
+                    
+                if (error) throw error;
+                
+                // Update local data
+                user.limits = limitsStr;
+                
+                // Update UI visually
+                document.getElementById('modal-user-sodium-limit').textContent = newSodium;
+                document.getElementById('modal-user-protein-limit').textContent = newProtein;
+                
+                const msg = document.getElementById('edit-success-msg');
+                msg.style.display = 'block';
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                
+                // Re-process charts if needed
+                processChartData(globalProfiles, globalLogs);
+                
+            } catch (err) {
+                console.error("Error updating limits:", err);
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            }
         }
     </script>
 </body>
