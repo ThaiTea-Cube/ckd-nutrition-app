@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ค้นหาอาหาร - CKD Nutrition</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <style>
+        .page-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: var(--bg-base);
+            padding-bottom: 24px;
+        }
+        
+        .header-search {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            background-color: var(--bg-base);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .back-btn {
+            color: var(--text-high);
+            font-size: 20px;
+            text-decoration: none;
+            margin-right: 16px;
+        }
+        
+        .search-input-wrapper {
+            flex: 1;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 100px;
+            border: 1px solid var(--primary-color);
+            background-color: var(--surface-color);
+            font-family: 'Prompt', sans-serif;
+            font-size: 14px;
+            color: var(--text-high);
+        }
+        
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+        }
+        
+        .food-list {
+            padding: 0 16px;
+        }
+        
+        .food-card {
+            background-color: var(--surface-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            border: 1px solid var(--border-color);
+        }
+        
+        .food-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background-color: var(--bg-base);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .food-content {
+            flex: 1;
+        }
+        
+        .food-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-high);
+            margin-bottom: 8px;
+        }
+        
+        .food-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .food-pill {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 500;
+            border: 1px solid;
+            background-color: white;
+        }
+        
+        .pill-success { border-color: #BBF7D0; color: #10B981; }
+        .pill-warning { border-color: #FDE68A; color: #F59E0B; }
+        .pill-primary { border-color: #BAE6FD; color: #0284C7; }
+        .pill-danger { border-color: #FECACA; color: #EF4444; }
+        
+        .add-btn-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="header-search">
+            <a href="index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <div class="search-input-wrapper">
+                <input type="text" class="search-input" placeholder="ค้นหาอาหาร... เช่น ข้าวต้ม, ปลา">
+            </div>
+        </div>
+        
+        <div class="food-list" id="food-list-container">
+            <p style="text-align:center; padding: 20px; color: var(--text-medium);">กำลังโหลดข้อมูลเมนูอาหาร...</p>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="toast-notification">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="toast-message">บันทึกสำเร็จ</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const foodListContainer = document.getElementById('food-list-container');
+            const searchInput = document.querySelector('.search-input');
+            const SHEET_URL = 'https://docs.google.com/spreadsheets/d/10MV1FFJPuS0itcpnBGcVACpbH2hvpNJWg7M5u8GQ6yY/export?format=csv&gid=0';
+            
+            let allFoods = [];
+            
+            // Get date from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetDateStr = urlParams.get('date');
+            if (!targetDateStr) {
+                const now = new Date();
+                targetDateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            }
+            
+            function parseCSV(text) {
+                const rows = [];
+                let currentRow = [];
+                let currentCell = '';
+                let inQuotes = false;
+                for (let i = 0; i < text.length; i++) {
+                    const c = text[i];
+                    if (c === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (c === ',' && !inQuotes) {
+                        currentRow.push(currentCell.trim());
+                        currentCell = '';
+                    } else if (c === '\n' && !inQuotes) {
+                        currentRow.push(currentCell.trim());
+                        rows.push(currentRow);
+                        currentRow = [];
+                        currentCell = '';
+                    } else {
+                        currentCell += c;
+                    }
+                }
+                if (currentRow.length > 0) {
+                    currentRow.push(currentCell.trim());
+                    rows.push(currentRow);
+                }
+                return rows;
+            }
+            
+            async function loadFoods() {
+                try {
+                    const response = await fetch(SHEET_URL);
+                    const csvText = await response.text();
+                    const rows = parseCSV(csvText);
+                    
+                    // Skip header row (index 0)
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (row.length < 11) continue; // Skip empty/invalid rows
+                        
+                        const idPrefix = row[0];
+                        if (!idPrefix || idPrefix === 'อาหารจานเดียว เส้น' || idPrefix === 'ผลไม้') continue; // Skip section headers
+                        
+                        const food = {
+                            name: row[1],
+                            category: row[2],
+                            protein: parseFloat(row[5]) || 0,
+                            potassium: parseFloat(row[6]) || 0,
+                            sodium: parseFloat(row[7]) || 0,
+                            sugar: parseFloat(row[8]) || 0,
+                            carb: parseFloat(row[9]) || 0,
+                            water: parseFloat(row[10]) || 0
+                        };
+                        
+                        if (food.name) {
+                            allFoods.push(food);
+                        }
+                    }
+                    
+                    renderFoods(allFoods);
+                } catch (err) {
+                    console.error("Error loading foods:", err);
+                    foodListContainer.innerHTML = '<p style="text-align:center; padding: 20px; color: red;">ไม่สามารถโหลดข้อมูลได้ กรุณาลองใหม่</p>';
+                }
+            }
+            
+            function renderFoods(foods) {
+                foodListContainer.innerHTML = '';
+                
+                if (foods.length === 0) {
+                    foodListContainer.innerHTML = '<p style="text-align:center; padding: 20px; color: var(--text-medium);">ไม่พบเมนูอาหาร</p>';
+                    return;
+                }
+                
+                foods.forEach((food, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'food-card';
+                    card.innerHTML = `
+                        <div class="food-icon"><i class="fa-solid fa-utensils"></i></div>
+                        <div class="food-content">
+                            <h3 class="food-name">${food.name}</h3>
+                            <div class="food-badges" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">
+                                <span class="food-pill pill-success" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(16, 185, 129, 0.1); color: #10B981;"><i class="fa-solid fa-drumstick-bite" style="margin-right:4px;"></i>โปรตีน <span style="font-weight:700">${food.protein} กรัม</span></span>
+                                <span class="food-pill pill-warning" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(245, 158, 11, 0.1); color: #F59E0B;"><i class="fa-solid fa-bowl-rice" style="margin-right:4px;"></i>คาร์โบไฮเดรต <span style="font-weight:700">${food.carb} กรัม</span></span>
+                                <span class="food-pill pill-warning-dark" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(217, 119, 6, 0.1); color: #D97706;"><i class="fa-solid fa-cookie" style="margin-right:4px;"></i>น้ำตาล <span style="font-weight:700">${food.sugar} กรัม</span></span>
+                                <span class="food-pill pill-primary" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(59, 130, 246, 0.1); color: #3B82F6;"><i class="fa-solid fa-droplet" style="margin-right:4px;"></i>โซเดียม <span style="font-weight:700">${food.sodium} มก.</span></span>
+                                <span class="food-pill pill-danger" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(239, 68, 68, 0.1); color: #EF4444;"><i class="fa-solid fa-flask" style="margin-right:4px;"></i>โพแทสเซียม <span style="font-weight:700">${food.potassium} มก.</span></span>
+                                ${food.water > 0 ? `<span class="food-pill pill-primary" style="padding: 2px 8px; border-radius: 12px; font-size: 11px; background: rgba(59, 130, 246, 0.1); color: #3B82F6;"><i class="fa-solid fa-glass-water" style="margin-right:4px;"></i>น้ำเปล่า <span style="font-weight:700">${food.water} มล.</span></span>` : ''}
+                            </div>
+                        </div>
+                        <button class="add-btn-small" data-index="${index}"><i class="fa-solid fa-plus"></i></button>
+                    `;
+                    foodListContainer.appendChild(card);
+                });
+                
+                // Attach Add events
+                document.querySelectorAll('.add-btn-small').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const index = e.currentTarget.getAttribute('data-index');
+                        await addFood(foods[index], e.currentTarget);
+                    });
+                });
+            }
+            
+            async function addFood(food, btnEl) {
+                const userEmail = localStorage.getItem('currentUserEmail');
+                if (!userEmail) {
+                    showToast('ไม่พบข้อมูลผู้ใช้', 'error');
+                    return;
+                }
+                
+                try {
+                    btnEl.disabled = true;
+                    btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                    
+                    // Fetch current data from Supabase
+                    const { data: currentData, error: fetchError } = await supabase
+                        .from('daily_logs')
+                        .select('*')
+                        .eq('email', userEmail.toLowerCase())
+                        .eq('date', targetDateStr)
+                        .maybeSingle();
+                        
+                    const existingData = currentData || {};
+                    
+                    const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+                    
+                    const newMeal = {
+                        name: food.name,
+                        time: timeStr,
+                        protein: food.protein,
+                        carb: food.carb,
+                        sodium: food.sodium,
+                        potassium: food.potassium,
+                        sugar: food.sugar,
+                        water: food.water
+                    };
+                    
+                    let currentMeals = existingData.meals || [];
+                    if (typeof currentMeals === 'string') {
+                        try { currentMeals = JSON.parse(currentMeals); } catch(e) { currentMeals = []; }
+                    }
+                    if (!Array.isArray(currentMeals)) {
+                        currentMeals = [];
+                    }
+                    // Filter out any corrupted elements
+                    currentMeals = currentMeals.filter(m => m && typeof m === 'object' && m.name);
+                    currentMeals.push(newMeal);
+                    
+                    const updateData = {
+                        email: userEmail.toLowerCase(),
+                        date: targetDateStr,
+                        protein: (existingData.protein || 0) + food.protein,
+                        carb: (existingData.carb || 0) + food.carb,
+                        sodium: (existingData.sodium || 0) + food.sodium,
+                        potassium: (existingData.potassium || 0) + food.potassium,
+                        sugar: (existingData.sugar || 0) + food.sugar,
+                        meals: currentMeals
+                    };
+                    
+                    if (food.water > 0) {
+                        updateData.water_intake_ml = (existingData.water_intake_ml || 0) + food.water;
+                    }
+                    
+                    const { error: upsertError } = await supabase
+                        .from('daily_logs')
+                        .upsert(updateData, { onConflict: 'email, date' });
+                        
+                    if (upsertError) throw upsertError;
+                    
+                    showToast('เพิ่มเมนูอาหารสำเร็จ!', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                    
+                } catch (err) {
+                    console.error("Error saving food:", err);
+                    showToast('เกิดข้อผิดพลาด', 'error');
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                }
+            }
+            
+            function showToast(msg, type='success') {
+                const toast = document.getElementById('toast');
+                const toastMsg = document.getElementById('toast-message');
+                const icon = toast.querySelector('i');
+                
+                toastMsg.textContent = msg;
+                if (type === 'error') {
+                    toast.style.backgroundColor = '#ef4444';
+                    icon.className = 'fa-solid fa-circle-xmark';
+                } else {
+                    toast.style.backgroundColor = 'var(--success-color)';
+                    icon.className = 'fa-solid fa-circle-check';
+                }
+                
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+            
+            searchInput.addEventListener('input', (e) => {
+                const val = e.target.value.toLowerCase();
+                if (!val) {
+                    renderFoods(allFoods);
+                    return;
+                }
+                
+                const filtered = allFoods.filter(f => f.name.toLowerCase().includes(val));
+                renderFoods(filtered);
+            });
+            
+            loadFoods();
+        });
+    </script>
+</body>
+</html>

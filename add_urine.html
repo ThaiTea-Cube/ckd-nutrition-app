@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>บันทึกปริมาณปัสสาวะ - CKD Nutrition</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="theme.js"></script>
+    <script>
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <style>
+        .premium-card {
+            background: linear-gradient(145deg, #ffffff, #fffbeb);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.1);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 32px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .premium-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #F59E0B, #FCD34D);
+        }
+        .icon-wrapper {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FEF3C7 0%, rgba(245, 158, 11, 0.1) 100%);
+            color: #F59E0B;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 16px rgba(245, 158, 11, 0.15);
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .huge-input-wrapper {
+            position: relative;
+            margin-top: 8px;
+        }
+        .huge-input {
+            width: 100%;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            font-size: 32px;
+            font-weight: 700;
+            color: #F59E0B;
+            text-align: center;
+            font-family: 'Prompt', sans-serif;
+            transition: all 0.3s;
+            background: var(--surface-color);
+        }
+        .huge-input:focus {
+            outline: none;
+            border-color: #F59E0B;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+        }
+        .huge-input::placeholder {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+        .unit-label {
+            position: absolute;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-medium);
+            font-weight: 600;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <a href="index.html" class="icon-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="header-title">บันทึกปริมาณปัสสาวะ</h1>
+            <div style="width: 40px;"></div> <!-- Spacer -->
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-content" style="padding: 24px 20px;">
+            <div class="premium-card">
+                <div class="icon-wrapper">
+                    <i class="fa-solid fa-flask"></i>
+                </div>
+                <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 8px; color: var(--text-high);">คุณปัสสาวะออกไปเท่าไหร่?</h2>
+                <p style="color: var(--text-medium); font-size: 15px; margin-bottom: 0;" id="date-display">กำลังโหลดวันที่...</p>
+            </div>
+
+            <!-- Acoustic Estimation (Beta) -->
+            <div class="acoustic-estimation-card" style="margin-bottom: 24px; padding: 16px; background: rgba(13, 139, 255, 0.05); border-radius: 12px; border: 1px dashed var(--primary-color);">
+                <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin-bottom: 8px;"><i class="fa-solid fa-microphone"></i> กะปริมาณจากเสียง (BETA)</h3>
+                <p style="font-size: 13px; color: var(--text-medium); margin-bottom: 16px; line-height: 1.4;">ประเมินคร่าวๆ จากความยาวของเสียง <span style="color: var(--error-base); font-weight: 500;">ไม่สามารถทดแทนการตวงจริงได้</span></p>
+                
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 8px;">
+                    <button id="record-btn" style="width: 72px; height: 72px; border-radius: 50%; background: var(--surface-color); border: 2px solid var(--primary-color); color: var(--primary-color); font-size: 28px; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center;">
+                        <i class="fa-solid fa-microphone"></i>
+                    </button>
+                    <div id="record-status" style="margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--primary-color);">กดเพื่อเริ่มฟังเสียง</div>
+                    <div id="flow-timer" style="font-size: 28px; font-weight: 700; color: var(--text-high); display: none; margin-top: 8px;">0.0 <span style="font-size: 16px; color: var(--text-medium); font-weight: 500;">วินาที</span></div>
+                    
+                    <!-- Simple visualizer bar -->
+                    <div id="visualizer-container" style="width: 100%; height: 8px; background: rgba(0,0,0,0.05); border-radius: 4px; margin-top: 16px; overflow: hidden; display: none;">
+                        <div id="visualizer-bar" style="height: 100%; width: 0%; background: var(--primary-color); transition: width 0.1s, background-color 0.2s;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Input -->
+            <div class="form-group" style="margin-bottom: 32px;">
+                <label class="form-label" for="urine-input" style="font-size: 16px; font-weight: 700;">ระบุปริมาณปัสสาวะ</label>
+                <p style="font-size: 13px; color: var(--text-medium); margin-top: -4px; margin-bottom: 12px;">ตวงจากกระบอกตวง หรือกะปริมาณโดยประมาณ</p>
+                <div class="huge-input-wrapper">
+                    <input type="number" id="urine-input" class="huge-input" placeholder="0">
+                    <span class="unit-label">มล.</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-block" id="save-btn" style="padding: 16px; font-size: 18px; font-weight: 600; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2); background-color: #F59E0B; border-color: #F59E0B;">
+                <i class="fa-solid fa-check" style="margin-right: 8px;"></i> บันทึกปริมาณปัสสาวะ
+            </button>
+        </main>
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="toast-notification">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="toast-message">บันทึกสำเร็จ</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateDisplay = document.getElementById('date-display');
+            const urineInput = document.getElementById('urine-input');
+            const saveBtn = document.getElementById('save-btn');
+            
+            // Format Date function
+            const thMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            
+            // Get Date from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetDateStr = urlParams.get('date');
+            
+            if (!targetDateStr) {
+                const now = new Date();
+                const yyyy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                targetDateStr = `${yyyy}-${mm}-${dd}`;
+            }
+            
+            // Display Date
+            const d = new Date(targetDateStr);
+            dateDisplay.textContent = `สำหรับวันที่ ${d.getDate()} ${thMonths[d.getMonth()]} พ.ศ. ${d.getFullYear() + 543}`;
+            
+            // Save Logic
+            saveBtn.addEventListener('click', async () => {
+                const val = parseInt(urineInput.value);
+                if (isNaN(val) || val <= 0) {
+                    showToast('กรุณาระบุปริมาณปัสสาวะที่ถูกต้อง', 'error');
+                    return;
+                }
+                
+                // Get user from local storage
+                const userEmail = localStorage.getItem('currentUserEmail');
+                if (!userEmail) {
+                    showToast('ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่', 'error');
+                    return;
+                }
+                
+                const encodedEmail = userEmail.toLowerCase().replace(/\./g, ',');
+                
+                try {
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+                    
+                    // Fetch existing data to append
+                    const { data: currentData, error: fetchError } = await supabase
+                        .from('daily_logs')
+                        .select('*')
+                        .eq('email', userEmail.toLowerCase())
+                        .eq('date', targetDateStr)
+                        .maybeSingle();
+                        
+                    const existingData = currentData || {};
+                    const currentUrine = existingData.urine_output_ml || 0;
+                    
+                    const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+                    const newMeal = {
+                        name: 'ปัสสาวะ',
+                        time: timeStr,
+                        water: val, // use water for UI consistency in the badge
+                        protein: 0, carb: 0, sodium: 0, potassium: 0, sugar: 0
+                    };
+                    
+                    let currentMeals = existingData.meals || [];
+                    if (typeof currentMeals === 'string') {
+                        try { currentMeals = JSON.parse(currentMeals); } catch(e) { currentMeals = []; }
+                    }
+                    if (!Array.isArray(currentMeals)) {
+                        currentMeals = [];
+                    }
+                    // Filter out any corrupted elements
+                    currentMeals = currentMeals.filter(m => m && typeof m === 'object' && m.name);
+                    currentMeals.push(newMeal);
+                    
+                    const updateData = {
+                        email: userEmail.toLowerCase(),
+                        date: targetDateStr,
+                        urine_output_ml: currentUrine + val,
+                        meals: currentMeals
+                    };
+                    
+                    const { error: upsertError } = await supabase
+                        .from('daily_logs')
+                        .upsert(updateData, { onConflict: 'email, date' });
+                        
+                    if (upsertError) throw upsertError;
+                    
+                    showToast('บันทึกปริมาณปัสสาวะสำเร็จ!', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1500);
+                    
+                } catch (err) {
+                    console.error("Error saving urine logic:", err);
+                    showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'บันทึกปริมาณปัสสาวะ';
+                }
+            });
+            
+            function showToast(msg, type='success') {
+                const toast = document.getElementById('toast');
+                const toastMsg = document.getElementById('toast-message');
+                const icon = toast.querySelector('i');
+                
+                toastMsg.textContent = msg;
+                if(type === 'error') {
+                    toast.style.backgroundColor = 'var(--error-base)';
+                    icon.className = 'fa-solid fa-circle-exclamation';
+                } else {
+                    toast.style.backgroundColor = 'var(--success-color)';
+                    icon.className = 'fa-solid fa-circle-check';
+                }
+                
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+            
+            // --- Acoustic Estimation Logic (POC) ---
+            let audioContext;
+            let mediaStreamSource;
+            let analyser;
+            let isRecording = false;
+            let flowDurationMs = 0;
+            let animationId;
+            const recordBtn = document.getElementById('record-btn');
+            const recordStatus = document.getElementById('record-status');
+            const flowTimer = document.getElementById('flow-timer');
+            const visualizerContainer = document.getElementById('visualizer-container');
+            const visualizerBar = document.getElementById('visualizer-bar');
+
+            recordBtn.addEventListener('click', async () => {
+                if (!isRecording) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                        startRecording(stream);
+                    } catch (err) {
+                        showToast('กรุณาอนุญาตให้แอปใช้งานไมโครโฟน', 'error');
+                        console.error('Mic error:', err);
+                    }
+                } else {
+                    stopRecording();
+                }
+            });
+
+            function startRecording(stream) {
+                isRecording = true;
+                flowDurationMs = 0;
+                
+                // UI Updates
+                recordBtn.style.backgroundColor = 'var(--error-base)';
+                recordBtn.style.borderColor = 'var(--error-base)';
+                recordBtn.style.color = 'white';
+                recordBtn.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.4)';
+                recordBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
+                recordStatus.textContent = 'กำลังฟังเสียง... (กดเพื่อหยุด)';
+                flowTimer.style.display = 'block';
+                flowTimer.innerHTML = '0.0 <span style="font-size: 16px; color: var(--text-medium); font-weight: 500;">วินาที</span>';
+                visualizerContainer.style.display = 'block';
+                
+                // Audio Setup
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                
+                mediaStreamSource = audioContext.createMediaStreamSource(stream);
+                mediaStreamSource.connect(analyser);
+                
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                let lastTimestamp = performance.now();
+                
+                function analyzeAudio(timestamp) {
+                    if (!isRecording) return;
+                    
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    // Calculate average volume
+                    let sum = 0;
+                    for(let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    let average = sum / bufferLength;
+                    
+                    // Update visualizer (scale average 0-255 to 0-100%)
+                    const volumePercent = Math.min(100, (average / 128) * 100);
+                    visualizerBar.style.width = volumePercent + '%';
+                    
+                    // Threshold for "splashing sound"
+                    const THRESHOLD = 20; 
+                    
+                    const deltaMs = timestamp - lastTimestamp;
+                    lastTimestamp = timestamp;
+                    
+                    if (average > THRESHOLD) {
+                        flowDurationMs += deltaMs;
+                        visualizerBar.style.backgroundColor = 'var(--success-color)';
+                    } else {
+                        visualizerBar.style.backgroundColor = 'var(--primary-color)';
+                    }
+                    
+                    flowTimer.innerHTML = (flowDurationMs / 1000).toFixed(1) + ' <span style="font-size: 16px; color: var(--text-medium); font-weight: 500;">วินาที</span>';
+                    
+                    animationId = requestAnimationFrame(analyzeAudio);
+                }
+                
+                animationId = requestAnimationFrame(analyzeAudio);
+            }
+
+            function stopRecording() {
+                isRecording = false;
+                cancelAnimationFrame(animationId);
+                
+                if (mediaStreamSource) {
+                    mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStreamSource.disconnect();
+                }
+                if (audioContext) {
+                    audioContext.close();
+                }
+                
+                // UI Reset
+                recordBtn.style.backgroundColor = 'var(--surface-color)';
+                recordBtn.style.borderColor = 'var(--primary-color)';
+                recordBtn.style.color = 'var(--primary-color)';
+                recordBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.05)';
+                recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+                recordStatus.textContent = 'กดเพื่อเริ่มฟังเสียงใหม่';
+                visualizerContainer.style.display = 'none';
+                
+                // Calculate Volume (approx 15ml per second of active sound)
+                const totalSeconds = flowDurationMs / 1000;
+                // Add a small base amount if any sound was detected to avoid 0ml for quick tests
+                const estimatedMl = totalSeconds > 0 ? Math.round(totalSeconds * 15) : 0;
+                
+                if (estimatedMl > 0) {
+                    urineInput.value = estimatedMl;
+                    showToast(`ประเมินปริมาตรได้ประมาณ ${estimatedMl} มล.`, 'success');
+                    
+                    // Highlight input to show it was auto-filled
+                    urineInput.style.transition = 'background-color 0.5s';
+                    urineInput.style.backgroundColor = 'rgba(16, 185, 129, 0.15)';
+                    setTimeout(() => {
+                        urineInput.style.backgroundColor = 'transparent';
+                    }, 1500);
+                } else {
+                    showToast('ไม่พบเสียงปัสสาวะที่ชัดเจนพอ โปรดพิมพ์กรอกเอง', 'error');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

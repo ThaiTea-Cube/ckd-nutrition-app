@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บัญชี - CKD Nutrition</title>
+    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        function encodeEmail(email) {
+            return email.toLowerCase().replace(/\./g, ',');
+        }
+
+        // Profile Picture Upload Logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const avatarTrigger = document.getElementById('avatar-upload-trigger');
+            if (avatarTrigger) {
+                avatarTrigger.addEventListener('click', function() {
+                    document.getElementById('profile-upload-input').click();
+                });
+            }
+
+            const profileInput = document.getElementById('profile-upload-input');
+            if (profileInput) {
+                profileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    if (!file.type.startsWith('image/')) {
+                        showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const maxSize = 300;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                                if (width > maxSize) {
+                                    height *= maxSize / width;
+                                    width = maxSize;
+                                }
+                            } else {
+                                if (height > maxSize) {
+                                    width *= maxSize / height;
+                                    height = maxSize;
+                                }
+                            }
+
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+                            document.getElementById('profile-avatar').src = compressedBase64;
+                            
+                            // Save profile image to localStorage
+                            localStorage.setItem('profileImage', compressedBase64);
+                            showToast('อัปเดตรูปโปรไฟล์สำเร็จ!', 'success');
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            // Load saved profile image
+            const savedImage = localStorage.getItem('profileImage');
+            if (savedImage) {
+                const avatar = document.getElementById('profile-avatar');
+                if (avatar) avatar.src = savedImage;
+            }
+        });
+
+        // Check login state before rendering
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="theme.js"></script>
+    <style>
+        .profile-container {
+            /* Now merged into info-card inline styles */
+        }
+        
+        .profile-avatar-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            border: 4px solid white;
+            box-shadow: 0 8px 24px rgba(13, 139, 255, 0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: 500;
+            object-fit: cover;
+        }
+        
+        .profile-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-high);
+            margin-bottom: 8px;
+        }
+        
+        .profile-details {
+            font-size: 15px;
+            color: var(--text-medium);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .btn-edit-minimal {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: var(--text-low);
+            background: var(--bg-base);
+            font-size: 16px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-edit-minimal:active {
+            background-color: var(--border-color);
+            transform: scale(0.95);
+        }
+
+        .section-title-icon {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-high);
+            margin: 32px 24px 16px 24px;
+        }
+        
+        .limits-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 8px;
+            padding: 0 24px;
+            margin-bottom: 32px;
+        }
+
+        .limit-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-high);
+        }
+
+        .limit-item i {
+            width: 16px;
+            text-align: center;
+        }
+
+        .info-card {
+            background-color: var(--surface-color);
+            border-radius: 24px;
+            padding: 24px;
+            margin: 0 24px 20px 24px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+        
+        .info-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-high);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .info-label {
+            color: var(--text-medium);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .info-label i {
+            color: var(--primary-color);
+            width: 16px;
+            text-align: center;
+            background: var(--primary-light);
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .info-value {
+            font-weight: 700;
+            color: var(--text-high);
+            font-size: 15px;
+        }
+
+        .info-value.highlight {
+            color: var(--secondary-color);
+        }
+        
+        .logout-btn-container {
+            padding: 24px;
+            margin-top: 20px;
+        }
+        
+        .btn-logout {
+            width: 100%;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            font-family: 'Prompt', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            background-color: var(--error-light);
+            color: var(--error-base);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .btn-logout:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" style="padding: 0; background-color: var(--bg-base);">
+        <!-- Profile Info Card -->
+        <div class="card info-card" style="position: relative; margin-top: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; padding-top: 32px;">
+            <!-- Minimal Edit Button -->
+            <a href="edit_profile.html" class="btn-edit-minimal">
+                <i class="fa-solid fa-pen"></i>
+            </a>
+            
+            <!-- Minimal Theme Toggle Button -->
+            <button id="theme-toggle-btn" class="btn-edit-minimal" style="right: 60px; border: none; cursor: pointer;">
+                <i class="fa-solid fa-moon" id="theme-icon"></i>
+            </button>
+            
+            <div class="profile-avatar-container" id="avatar-upload-trigger" style="cursor: pointer; position: relative;">
+                <img src="https://ui-avatars.com/api/?name=User&background=0D8BFF&color=fff" alt="Profile" class="profile-avatar" id="profile-avatar">
+                <div style="position: absolute; bottom: 0; right: 0; background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 2px solid white;">
+                    <i class="fa-solid fa-camera" style="font-size: 14px;"></i>
+                </div>
+            </div>
+            <input type="file" id="profile-upload-input" accept="image/*" style="display: none;">
+            
+            <div class="profile-name" id="display-name">คุณยังไม่ได้ตั้งชื่อ</div>
+            <div class="profile-details" id="display-details" style="text-align: center; margin-bottom: 8px;">กรุณากรอกข้อมูลส่วนตัวเพื่อเริ่มต้นใช้งาน</div>
+        </div>
+
+        <!-- Calculated Limits Card -->
+        <div class="card info-card" id="limits-card" style="display: none;">
+            <div class="section-title-icon" style="margin: 0 0 20px 0; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
+                <i class="fa-solid fa-bullseye" style="color: var(--secondary-color); background: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 8px;"></i> เป้าหมายโภชนาการของคุณ
+            </div>
+            
+            <div class="limits-grid" style="padding: 0; margin-bottom: 0;">
+                <div class="limit-item">
+                    <i class="fa-solid fa-drumstick-bite" style="color: #F59E0B;"></i>
+                    <span>โปรตีน: <span id="limit-protein">-</span> กรัม</span>
+                </div>
+                <div class="limit-item">
+                    <i class="fa-solid fa-glass-water" style="color: #0EA5E9;"></i>
+                    <span>น้ำดื่ม: <span id="limit-water">-</span> มล.</span>
+                </div>
+                <div class="limit-item">
+                    <i class="fa-solid fa-wheat-awn" style="color: #EAB308;"></i>
+                    <span>คาร์โบไฮเดรต: <span id="limit-carb">-</span> กรัม</span>
+                </div>
+                <div class="limit-item">
+                    <i class="fa-solid fa-droplet" style="color: #3B82F6;"></i>
+                    <span>โซเดียม: <span id="limit-sodium">-</span> มก.</span>
+                </div>
+                <div class="limit-item">
+                    <i class="fa-solid fa-leaf" style="color: #10B981;"></i>
+                    <span>โพแทสเซียม: <span id="limit-potassium">-</span> มก.</span>
+                </div>
+                <div class="limit-item">
+                    <i class="fa-solid fa-fire" style="color: #EF4444;"></i>
+                    <span>พลังงาน: <span id="limit-energy">-</span> kcal</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card info-card" id="health-card" style="display: none;">
+            <div class="section-title-icon" style="margin: 0 0 16px 0; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
+                <i class="fa-solid fa-heart-pulse" style="color: var(--error-base); background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 8px;"></i> ข้อมูลสุขภาพของคุณ
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label"><i class="fa-solid fa-notes-medical"></i> ระยะโรคไต (CKD Stage)</div>
+                <div class="info-value highlight" id="health-stage">ระยะที่ -</div>
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label"><i class="fa-solid fa-weight-scale"></i> น้ำหนัก</div>
+                <div class="info-value" id="health-weight">- กก.</div>
+            </div>
+            
+            <div class="info-row">
+                <div class="info-label"><i class="fa-solid fa-ruler-vertical"></i> ส่วนสูง</div>
+                <div class="info-value" id="health-height">- ซม.</div>
+            </div>
+        </div>
+        
+        <div class="logout-btn-container" style="padding-top: 0;">
+            <button id="logout-btn" class="btn-logout">
+                <i class="fa-solid fa-right-from-bracket"></i> ออกจากระบบ
+            </button>
+            <button id="reset-data-btn" class="btn-logout" style="background-color: var(--surface-color); color: var(--text-medium); border: 1px solid var(--border-color); margin-top: 12px; font-size: 14px;">
+                <i class="fa-solid fa-trash-can"></i> ลบข้อมูลบัญชี
+            </button>
+        </div>
+        
+        <div style="height: 100px;"></div>
+        <div id="logout-modal" class="modal-overlay">
+            <div class="modal-box">
+                <i class="fa-solid fa-right-from-bracket" style="font-size: 36px; color: var(--error-base); margin-bottom: 16px;"></i>
+                <h3 class="modal-title">ออกจากระบบ</h3>
+                <p class="modal-desc">คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบบัญชีนี้?</p>
+                <div class="modal-actions">
+                    <button id="modal-btn-no" class="modal-btn modal-btn-cancel">ไม่</button>
+                    <button id="modal-btn-yes" class="modal-btn modal-btn-confirm">ใช่</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="delete-modal" class="modal-overlay">
+            <div class="modal-box">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 36px; color: var(--error-base); margin-bottom: 16px;"></i>
+                <h3 class="modal-title" style="color: var(--error-base);">ลบข้อมูลบัญชี</h3>
+                <p class="modal-desc">คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลบัญชีทั้งหมด? ข้อมูลที่ถูกลบจะไม่สามารถกู้คืนได้</p>
+                <div class="modal-actions">
+                    <button id="delete-btn-no" class="modal-btn modal-btn-cancel">ยกเลิก</button>
+                    <button id="delete-btn-yes" class="modal-btn modal-btn-confirm">ลบข้อมูล</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>แดชบอร์ด</span>
+        </a>
+        <a href="#" class="nav-item add-menu">
+            <div class="add-btn">
+                <i class="fa-solid fa-plus"></i>
+            </div>
+            <span>เพิ่มเมนู</span>
+        </a>
+        <a href="#" class="nav-item">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>ประวัติ</span>
+        </a>
+        <a href="profile.html" class="nav-item active">
+            <i class="fa-solid fa-user"></i>
+            <span>บัญชี</span>
+        </a>
+    </nav>
+    
+    <script>
+        function showToast(message, type = 'success') {
+            let toast = document.getElementById('custom-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'custom-toast';
+                document.body.appendChild(toast);
+            }
+            toast.className = `toast-notification ${type === 'success' ? 'toast-success' : ''}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> ${message}`;
+            
+            void toast.offsetWidth;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        const currentUserEmail = localStorage.getItem('currentUserEmail');
+        
+        if (currentUserEmail) {
+            (async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('email', currentUserEmail.toLowerCase())
+                        .single();
+                        
+                    if (data && !error) {
+                        document.getElementById('display-name').textContent = data.name || 'คุณผู้ใช้งาน';
+                        
+                        // Set Avatar
+                        const customImage = localStorage.getItem('profileImage');
+                        const googleImage = localStorage.getItem('googleProfilePic');
+                        const defaultImage = `https://ui-avatars.com/api/?name=${data.name || 'U'}&background=0D8BFF&color=fff`;
+                        
+                        document.getElementById('profile-avatar').src = customImage || googleImage || defaultImage;
+                        
+                        let stageText = data.stage;
+                        if(stageText === '5_dialysis') stageText = '5 (ฟอกเลือด)';
+                        
+                        document.getElementById('display-details').textContent = `อายุ ${data.age || '-'} ปี • น้ำหนัก ${data.weight || '-'} กก. • ระยะที่ ${stageText || '-'}`;
+                        
+                        if(data.limits) {
+                            document.getElementById('limits-card').style.display = 'block';
+                            document.getElementById('limit-protein').textContent = data.limits.protein;
+                            document.getElementById('limit-water').textContent = data.limits.water.toLocaleString();
+                            document.getElementById('limit-carb').textContent = data.limits.carb;
+                            document.getElementById('limit-sodium').textContent = data.limits.sodium.toLocaleString();
+                            document.getElementById('limit-potassium').textContent = data.limits.potassium.toLocaleString();
+                            document.getElementById('limit-energy').textContent = data.limits.energy.toLocaleString();
+                            
+                            // Show health card and populate
+                            document.getElementById('health-card').style.display = 'block';
+                            document.getElementById('health-stage').textContent = 'ระยะที่ ' + (stageText || '-');
+                            document.getElementById('health-weight').textContent = (data.weight || '-') + ' กก.';
+                            document.getElementById('health-height').textContent = (data.height || '-') + ' ซม.';
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error fetching profile from Supabase:', err);
+                }
+            })();
+        }
+
+        // Theme Toggle Logic
+        if (window.setupThemeToggle) {
+            window.setupThemeToggle('theme-toggle-btn', 'theme-icon');
+        }
+
+        const logoutBtn = document.getElementById('logout-btn');
+        const logoutModal = document.getElementById('logout-modal');
+        const btnNo = document.getElementById('modal-btn-no');
+        const btnYes = document.getElementById('modal-btn-yes');
+
+        // Open Modal
+        logoutBtn.addEventListener('click', function() {
+            logoutModal.classList.add('active');
+        });
+
+        // Close Modal (No)
+        btnNo.addEventListener('click', function() {
+            logoutModal.classList.remove('active');
+        });
+
+        // Confirm Logout (Yes)
+        btnYes.addEventListener('click', function() {
+            logoutModal.classList.remove('active');
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('currentUserEmail');
+            localStorage.removeItem('googleProfilePic');
+            localStorage.removeItem('profileImage');
+            
+            // Show Success Toast
+            showToast('ออกจากระบบสำเร็จแล้ว', 'success');
+            
+            // Redirect after delay
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1500);
+        });
+
+        // Delete Account Logic
+        const resetBtn = document.getElementById('reset-data-btn');
+        const deleteModal = document.getElementById('delete-modal');
+        const deleteBtnNo = document.getElementById('delete-btn-no');
+        const deleteBtnYes = document.getElementById('delete-btn-yes');
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                deleteModal.classList.add('active');
+            });
+        }
+        
+        deleteBtnNo.addEventListener('click', function() {
+            deleteModal.classList.remove('active');
+        });
+        
+        deleteBtnYes.addEventListener('click', async function() {
+            const btnOriginalText = deleteBtnYes.textContent;
+            deleteBtnYes.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังลบ...';
+            deleteBtnYes.disabled = true;
+
+            try {
+                if (currentUserEmail) {
+                    // Delete from Supabase (this will cascade delete daily_logs)
+                    const { error } = await supabase
+                        .from('profiles')
+                        .delete()
+                        .eq('email', currentUserEmail.toLowerCase());
+                    
+                    if (error) {
+                        console.error('Error deleting account:', error);
+                        // Continue to clear local storage anyway
+                    }
+                }
+            } catch (err) {
+                console.error('Delete exception:', err);
+            }
+
+            deleteModal.classList.remove('active');
+            localStorage.clear();
+            showToast('ลบข้อมูลบัญชีเรียบร้อยแล้ว', 'success');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

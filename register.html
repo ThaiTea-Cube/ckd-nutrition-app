@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สมัครสมาชิก - CKD Nutrition</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Check if already logged in
+        if (localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'index.html';
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="theme.js"></script>
+    <style>
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+            background-color: var(--bg-base);
+        }
+        
+        .logo-container {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .logo-icon {
+            color: var(--primary-color);
+            font-size: 28px;
+            margin-right: 8px;
+        }
+        
+        .logo-text {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-medium);
+        }
+        
+        .logo-text span {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 24px;
+            animation: slideDown 0.5s ease-out;
+        }
+        
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-high);
+            margin-bottom: 4px;
+        }
+        
+        .welcome-subtitle {
+            font-size: 13px;
+            color: var(--text-medium);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            animation: slideUp 0.3s ease-out;
+            animation-fill-mode: both;
+        }
+        
+        .form-group:nth-child(1) { animation-delay: 0.05s; }
+        .form-group:nth-child(2) { animation-delay: 0.1s; }
+        .form-group:nth-child(3) { animation-delay: 0.15s; }
+        .form-group:nth-child(4) { animation-delay: 0.2s; }
+        
+        .input-label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-medium);
+            margin-bottom: 8px;
+            padding-left: 4px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            color: var(--text-low);
+            font-size: 16px;
+        }
+        
+        .input-icon-right {
+            position: absolute;
+            right: 16px;
+            color: var(--text-low);
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 16px 44px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            font-family: 'Prompt', sans-serif;
+            font-size: 14px;
+            color: var(--text-high);
+            background-color: var(--surface-color);
+            transition: all 0.2s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 1px var(--primary-color);
+        }
+        
+        .form-control::placeholder {
+            color: var(--text-low);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            font-family: 'Prompt', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            animation: slideUp 0.5s ease-out;
+            animation-fill-mode: both;
+            margin-top: 24px;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            animation-delay: 0.25s;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+            text-decoration: none;
+        }
+        
+        .register-link {
+            text-align: center;
+            margin-top: auto;
+            padding-top: 16px;
+            font-size: 13px;
+            color: var(--text-medium);
+            animation: slideUp 0.3s ease-out;
+            animation-delay: 0.3s;
+            animation-fill-mode: both;
+        }
+        
+        .register-link a {
+            color: var(--primary-color);
+            font-weight: 600;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" style="padding: 0;">
+        <div class="login-container" style="position: relative;">
+            <a href="login.html" class="btn-back" style="position: absolute; top: 24px; left: 24px; color: var(--text-medium); font-size: 20px; text-decoration: none; padding: 8px;">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <button type="button" id="theme-toggle" style="position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; border: none; background-color: var(--surface-color); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.05); z-index: 10;">
+                <i class="fa-solid fa-moon" id="theme-icon" style="font-size: 18px;"></i>
+            </button>
+            <div class="welcome-section">
+                <h1 class="welcome-title">สร้างบัญชีใหม่</h1>
+                <p class="welcome-subtitle">เริ่มต้นดูแลสุขภาพไตกับ CKD Nutrition</p>
+            </div>
+            
+            <form id="register-form">
+                <div class="form-group">
+                    <label class="input-label">ชื่อ - นามสกุล</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-user input-icon"></i>
+                        <input type="text" class="form-control" id="reg-name" placeholder="ชื่อ นามสกุลของคุณ" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="input-label">อีเมลของคุณ</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-envelope input-icon"></i>
+                        <input type="email" class="form-control" id="reg-email" placeholder="example@gmail.com" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="input-label">รหัสผ่าน</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock input-icon"></i>
+                        <input type="password" class="form-control" id="reg-password" placeholder="รหัสผ่านอย่างน้อย 6 ตัวอักษร" required minlength="6" style="padding-right: 40px;">
+                        <i class="fa-regular fa-eye input-icon-right toggle-password" data-target="reg-password"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="input-label">ยืนยันรหัสผ่าน</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock input-icon"></i>
+                        <input type="password" class="form-control" id="reg-confirm-password" placeholder="กรอกรหัสผ่านอีกครั้ง" required minlength="6" style="padding-right: 40px;">
+                        <i class="fa-regular fa-eye input-icon-right toggle-password" data-target="reg-confirm-password"></i>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="btn-register">สมัครสมาชิก</button>
+            </form>
+            
+            <div class="divider">หรือสมัครด้วย</div>
+            
+            <button type="button" id="google-register-btn" class="btn btn-google">
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                    <path fill="none" d="M0 0h48v48H0z"></path>
+                </svg>
+                สมัครสมาชิกด้วย Google
+            </button>
+            
+            <div class="register-link">
+                มีบัญชีผู้ใช้งานแล้ว? <a href="login.html">เข้าสู่ระบบ</a>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script>
+        function encodeEmail(email) {
+            return email.toLowerCase().replace(/\./g, ',');
+        }
+
+        // Custom Toast Notification Function
+        function showToast(message, type = 'error') {
+            let toast = document.getElementById('custom-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'custom-toast';
+                document.body.appendChild(toast);
+            }
+            toast.className = `toast-notification ${type === 'success' ? 'toast-success' : ''}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> ${message}`;
+            
+            // Trigger reflow
+            void toast.offsetWidth;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize Theme Toggle
+        if (window.setupThemeToggle) {
+            window.setupThemeToggle('theme-toggle', 'theme-icon');
+        }
+
+        // Toggle Password Visibility
+        document.querySelectorAll('.toggle-password').forEach(icon => {
+            icon.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    this.classList.remove('fa-eye');
+                    this.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    this.classList.remove('fa-eye-slash');
+                    this.classList.add('fa-eye');
+                }
+            });
+        });
+
+        // Auto-append @gmail.com on blur if no domain specified
+        const regEmail = document.getElementById('reg-email');
+        if (regEmail) {
+            regEmail.addEventListener('blur', function() {
+                if (this.value && !this.value.includes('@')) {
+                    this.value = this.value + '@gmail.com';
+                }
+            });
+        }
+
+        document.getElementById('register-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let email = document.getElementById('reg-email').value.trim();
+            if (email && !email.includes('@')) {
+                email += '@gmail.com';
+                document.getElementById('reg-email').value = email;
+            }
+            const password = document.getElementById('reg-password').value;
+            const confirmPassword = document.getElementById('reg-confirm-password').value;
+            
+            // Email Validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+            if (!emailRegex.test(email)) {
+                showToast('รูปแบบอีเมลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง', 'error');
+                return;
+            }
+            
+            // Basic fake & typo domain check
+            const fakeDomains = ['test.com', 'example.com', 'mailinator.com', 'fake.com', 'gnail.com', 'gmil.com', 'gmai.com', 'gmal.com'];
+            const emailDomain = email.split('@')[1].toLowerCase();
+            if (fakeDomains.includes(emailDomain)) {
+                showToast('ไม่อนุญาตให้ใช้อีเมลจากโดเมนนี้', 'error');
+                return;
+            }
+            
+            // Check if email already registered will be done via Firebase shortly
+            
+            // Password Validation
+            const hasEnglishLetter = /[a-zA-Z]/.test(password);
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            const hasThaiChar = /[ก-๙]/.test(password);
+            
+            if (password.length <= 6) {
+                showToast('รหัสผ่านต้องมีความยาวมากกว่า 6 ตัวอักษร', 'error');
+                return;
+            }
+            
+            if (hasThaiChar || !hasEnglishLetter) {
+                showToast('รหัสผ่านต้องมีตัวอักษรภาษาอังกฤษเท่านั้น (ห้ามใช้ภาษาไทย)', 'error');
+                return;
+            }
+            
+            if (!hasUpperCase) {
+                showToast('รหัสผ่านต้องมีตัวอักษรพิมพ์ใหญ่อย่างน้อย 1 ตัว', 'error');
+                return;
+            }
+            
+            if (!hasSpecialChar) {
+                showToast('รหัสผ่านต้องมีตัวอักษรพิเศษอย่างน้อย 1 ตัว', 'error');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showToast('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('btn-register');
+            const originalText = btn.innerHTML;
+            
+            // Simulation: Loading state
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังสร้างบัญชี...';
+            btn.style.opacity = '0.8';
+            btn.disabled = true;
+            
+            const name = document.getElementById('reg-name').value;
+            
+            // Supabase async request
+            (async () => {
+                try {
+                    // 1. Check if user already exists
+                    const { data: existingUser, error: checkError } = await supabase
+                        .from('profiles')
+                        .select('email')
+                        .eq('email', email.toLowerCase())
+                        .maybeSingle();
+                        
+                    if (existingUser) {
+                        showToast('อีเมลนี้ถูกใช้งานแล้ว กรุณาใช้อีเมลอื่นหรือเข้าสู่ระบบ', 'error');
+                        btn.innerHTML = originalText;
+                        btn.style.opacity = '1';
+                        btn.disabled = false;
+                        return;
+                    }
+                    
+                    // 2. Save new user to Supabase
+                    const newUser = {
+                        email: email.toLowerCase(),
+                        password: password,
+                        name: name
+                    };
+                    
+                    const { error: insertError } = await supabase
+                        .from('profiles')
+                        .insert([newUser]);
+                        
+                    if (insertError) {
+                        throw insertError;
+                    }
+                    
+                    // Set active user locally for session management
+                    localStorage.setItem('currentUserEmail', email.toLowerCase());
+                    localStorage.setItem('isLoggedIn', 'true');
+                    
+                    showToast('สมัครสมาชิกสำเร็จ! กรุณากรอกข้อมูลส่วนตัว...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'edit_profile.html';
+                    }, 1500);
+                    
+                } catch (error) {
+                    console.error('Supabase Error:', error);
+                    showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+                    btn.innerHTML = originalText;
+                    btn.style.opacity = '1';
+                    btn.disabled = false;
+                }
+            })();
+        });
+
+        // Google Register
+        document.getElementById('google-register-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const btn = this;
+            
+            // Get email from input directly
+            let googleEmail = document.getElementById('reg-email').value.trim();
+            if (!googleEmail) {
+                // Generate a mock Google email if they didn't type anything (Simulating One-Tap Registration)
+                const randomId = Math.floor(Math.random() * 10000);
+                googleEmail = `google_user_${randomId}@gmail.com`;
+                document.getElementById('reg-email').value = googleEmail;
+            }
+            
+            // Auto-append @gmail.com if no domain specified
+            if (!googleEmail.includes('@')) {
+                googleEmail += '@gmail.com';
+                document.getElementById('reg-email').value = googleEmail;
+            }
+            
+            // Validate email format and domain
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+            if (!emailRegex.test(googleEmail)) {
+                showToast('รูปแบบอีเมลไม่ถูกต้อง', 'error');
+                return;
+            }
+            const fakeDomains = ['test.com', 'example.com', 'mailinator.com', 'fake.com', 'gnail.com', 'gmil.com', 'gmai.com', 'gmal.com'];
+            const emailDomain = googleEmail.split('@')[1].toLowerCase();
+            if (fakeDomains.includes(emailDomain)) {
+                showToast('ไม่อนุญาตให้ใช้อีเมลจากโดเมนนี้ (อาจพิมพ์ผิด)', 'error');
+                return;
+            }
+            
+            // Real Google OAuth Popup
+            const clientId = '307641780996-50omr3hst6uqf7esstfetk3p70ocqcch.apps.googleusercontent.com';
+            const redirectUri = window.location.origin + window.location.pathname; 
+            
+            const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` + 
+                `client_id=${clientId}` + 
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` + 
+                `&response_type=token` + 
+                `&scope=email%20profile` + 
+                `&prompt=select_account`;
+                
+            window.location.href = googleAuthUrl;
+        });
+
+        // Handle Google OAuth Redirect
+        window.addEventListener('load', function() {
+            const hash = window.location.hash;
+            if (hash.includes('access_token=')) {
+                // Parse access token
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get('access_token');
+                if (accessToken) {
+                    // Fetch user profile
+                    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    })
+                    .then(res => res.json())
+                    .then(async data => {
+                        if (data.email) {
+                            try {
+                                const { data: existingUser } = await supabase
+                                    .from('profiles')
+                                    .select('email')
+                                    .eq('email', data.email.toLowerCase())
+                                    .maybeSingle();
+                                    
+                                if (existingUser) {
+                                    showToast('อีเมลนี้ถูกใช้งานแล้ว เข้าสู่ระบบให้คุณอัตโนมัติ...', 'success');
+                                    localStorage.setItem('currentUserEmail', data.email.toLowerCase());
+                                    localStorage.setItem('isLoggedIn', 'true');
+                                    if (data.picture) {
+                                        localStorage.setItem('googleProfilePic', data.picture);
+                                    }
+                                    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+                                    return;
+                                }
+                                
+                                const newUser = {
+                                    email: data.email.toLowerCase(),
+                                    name: data.name || data.given_name || 'ผู้ใช้ Google'
+                                };
+                                
+                                const { error: insertError } = await supabase
+                                    .from('profiles')
+                                    .insert([newUser]);
+                                    
+                                if (insertError) throw insertError;
+                                
+                                    localStorage.setItem('currentUserEmail', data.email.toLowerCase());
+                                    localStorage.setItem('isLoggedIn', 'true');
+                                    if (data.picture) {
+                                        localStorage.setItem('googleProfilePic', data.picture);
+                                    }
+                                showToast('สมัครสมาชิกด้วยบัญชี Google สำเร็จ!', 'success');
+                                setTimeout(() => { window.location.href = 'edit_profile.html'; }, 1500);
+                                
+                            } catch (error) {
+                                console.error('Supabase Error:', error);
+                                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล', 'error');
+                            }
+                        }
+                        // Clean the URL
+                        history.replaceState(null, null, 'register.html');
+                    })
+                    .catch(err => {
+                        showToast('เกิดข้อผิดพลาดในการดึงข้อมูลจาก Google', 'error');
+                        console.error(err);
+                        history.replaceState(null, null, 'register.html');
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>บันทึกการดื่มน้ำ - CKD Nutrition</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script src="theme.js"></script>
+    <script>
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <style>
+        .premium-card {
+            background: linear-gradient(145deg, #ffffff, #f0f7ff);
+            border: 1px solid rgba(2, 132, 199, 0.15);
+            box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.1);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 32px 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .premium-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+        }
+        .icon-wrapper {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-light) 0%, rgba(2, 132, 199, 0.1) 100%);
+            color: var(--primary-color);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 16px rgba(2, 132, 199, 0.15);
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .quick-add-btn {
+            background: var(--surface-color);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px 8px;
+            font-family: 'Prompt', sans-serif;
+            font-weight: 600; font-size: 14px;
+            color: var(--text-high);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .quick-add-btn:active {
+            transform: scale(0.95);
+        }
+        .quick-add-btn i {
+            font-size: 24px; margin-bottom: 10px;
+            color: var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+        .quick-add-btn:hover i {
+            transform: scale(1.1) rotate(-5deg);
+        }
+        .quick-add-btn.selected {
+            border-color: var(--primary-color);
+            background: rgba(2, 132, 199, 0.05);
+            color: var(--primary-color);
+        }
+        .huge-input-wrapper {
+            position: relative;
+            margin-top: 8px;
+        }
+        .huge-input {
+            width: 100%;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-align: center;
+            font-family: 'Prompt', sans-serif;
+            transition: all 0.3s;
+            background: var(--surface-color);
+        }
+        .huge-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.1);
+        }
+        .huge-input::placeholder {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+        .unit-label {
+            position: absolute;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-medium);
+            font-weight: 600;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <a href="index.html" class="icon-btn"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="header-title">บันทึกการดื่มน้ำ</h1>
+            <div style="width: 40px;"></div> <!-- Spacer -->
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-content" style="padding: 24px 20px;">
+            <div class="premium-card">
+                <div class="icon-wrapper">
+                    <i class="fa-solid fa-glass-water"></i>
+                </div>
+                <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 8px; color: var(--text-high);">คุณดื่มน้ำไปเท่าไหร่?</h2>
+                <p style="color: var(--text-medium); font-size: 15px; margin-bottom: 0;" id="date-display">กำลังโหลดวันที่...</p>
+            </div>
+
+            <!-- Quick Add -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--text-high); margin: 0;">เมนูลัด</h3>
+                <span style="font-size: 12px; color: var(--primary-color); font-weight: 600; background: var(--primary-light); padding: 4px 10px; border-radius: 100px;">แนะนำ</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 32px;">
+                <button class="quick-add-btn" data-val="100">
+                    <i class="fa-solid fa-mug-hot"></i>
+                    <span>100 มล.</span>
+                </button>
+                <button class="quick-add-btn" data-val="250">
+                    <i class="fa-solid fa-glass-water"></i>
+                    <span>250 มล.</span>
+                </button>
+                <button class="quick-add-btn" data-val="500">
+                    <i class="fa-solid fa-bottle-water"></i>
+                    <span>500 มล.</span>
+                </button>
+            </div>
+
+            <!-- Manual Input -->
+            <div class="form-group" style="margin-bottom: 32px;">
+                <label class="form-label" for="water-input" style="font-size: 16px; font-weight: 700;">กำหนดปริมาณเอง</label>
+                <div class="huge-input-wrapper">
+                    <input type="number" id="water-input" class="huge-input" placeholder="0">
+                    <span class="unit-label">มล.</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-block" id="save-btn" style="padding: 16px; font-size: 18px; font-weight: 600; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);">
+                <i class="fa-solid fa-check" style="margin-right: 8px;"></i> บันทึกปริมาณน้ำ
+            </button>
+        </main>
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="toast-notification">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="toast-message">บันทึกสำเร็จ</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dateDisplay = document.getElementById('date-display');
+            const waterInput = document.getElementById('water-input');
+            const quickBtns = document.querySelectorAll('.quick-add-btn');
+            const saveBtn = document.getElementById('save-btn');
+            
+            // Format Date function
+            const thMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            
+            // Get Date from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetDateStr = urlParams.get('date');
+            
+            if (!targetDateStr) {
+                const now = new Date();
+                const yyyy = now.getFullYear();
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                targetDateStr = `${yyyy}-${mm}-${dd}`;
+            }
+            
+            // Display Date
+            const d = new Date(targetDateStr);
+            dateDisplay.textContent = `สำหรับวันที่ ${d.getDate()} ${thMonths[d.getMonth()]} พ.ศ. ${d.getFullYear() + 543}`;
+            
+            // Quick Add Logic
+            quickBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Reset borders
+                    quickBtns.forEach(b => b.classList.remove('selected'));
+                    // Highlight selected
+                    btn.classList.add('selected');
+                    
+                    waterInput.value = btn.getAttribute('data-val');
+                });
+            });
+            
+            // Form Validation
+            waterInput.addEventListener('input', () => {
+                quickBtns.forEach(b => b.classList.remove('selected'));
+            });
+            
+            // Save Logic
+            saveBtn.addEventListener('click', async () => {
+                const val = parseInt(waterInput.value);
+                if (isNaN(val) || val <= 0) {
+                    showToast('กรุณาระบุปริมาณน้ำที่ถูกต้อง', 'error');
+                    return;
+                }
+                
+                // Get user from local storage
+                const userEmail = localStorage.getItem('currentUserEmail');
+                if (!userEmail) {
+                    showToast('ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่', 'error');
+                    return;
+                }
+                
+                const encodedEmail = userEmail.toLowerCase().replace(/\./g, ',');
+                
+                try {
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+                    
+                    // Fetch existing data to append
+                    const { data: currentData, error: fetchError } = await supabase
+                        .from('daily_logs')
+                        .select('*')
+                        .eq('email', userEmail.toLowerCase())
+                        .eq('date', targetDateStr)
+                        .maybeSingle();
+                        
+                    const existingData = currentData || {};
+                    const currentWater = existingData.water_intake_ml || 0;
+                    
+                    const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+                    const newMeal = {
+                        name: 'น้ำเปล่า',
+                        time: timeStr,
+                        water: val,
+                        protein: 0, carb: 0, sodium: 0, potassium: 0, sugar: 0
+                    };
+                    
+                    let currentMeals = existingData.meals || [];
+                    if (typeof currentMeals === 'string') {
+                        try { currentMeals = JSON.parse(currentMeals); } catch(e) { currentMeals = []; }
+                    }
+                    if (!Array.isArray(currentMeals)) {
+                        currentMeals = [];
+                    }
+                    // Filter out any corrupted elements
+                    currentMeals = currentMeals.filter(m => m && typeof m === 'object' && m.name);
+                    currentMeals.push(newMeal);
+                    
+                    const updateData = {
+                        email: userEmail.toLowerCase(),
+                        date: targetDateStr,
+                        water_intake_ml: currentWater + val,
+                        meals: currentMeals
+                    };
+                    
+                    const { error: upsertError } = await supabase
+                        .from('daily_logs')
+                        .upsert(updateData, { onConflict: 'email, date' });
+                        
+                    if (upsertError) throw upsertError;
+                    
+                    showToast('บันทึกปริมาณน้ำสำเร็จ!', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1500);
+                    
+                } catch (err) {
+                    console.error("Error saving water logic:", err);
+                    showToast('เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error');
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'บันทึกปริมาณน้ำ';
+                }
+            });
+            
+            function showToast(msg, type='success') {
+                const toast = document.getElementById('toast');
+                const toastMsg = document.getElementById('toast-message');
+                const icon = toast.querySelector('i');
+                
+                toastMsg.textContent = msg;
+                if(type === 'error') {
+                    toast.style.backgroundColor = 'var(--error-base)';
+                    icon.className = 'fa-solid fa-circle-exclamation';
+                } else {
+                    toast.style.backgroundColor = 'var(--success-color)';
+                    icon.className = 'fa-solid fa-circle-check';
+                }
+                
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
