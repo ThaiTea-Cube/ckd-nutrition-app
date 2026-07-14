@@ -545,10 +545,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fluidUrineEl = document.getElementById('fluid-urine');
                 const fluidBalanceEl = document.getElementById('fluid-balance');
                 
+                const balance = currentWater - currentUrine;
+                
                 if (fluidWaterEl) fluidWaterEl.textContent = currentWater.toLocaleString() + ' มล.';
                 if (fluidUrineEl) fluidUrineEl.textContent = currentUrine.toLocaleString() + ' มล.';
                 if (fluidBalanceEl) {
-                    const balance = currentWater - currentUrine;
                     if (balance > 0) {
                         fluidBalanceEl.textContent = '+' + balance.toLocaleString() + ' มล.';
                         fluidBalanceEl.className = 'total-value text-primary';
