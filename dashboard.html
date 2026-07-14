@@ -320,6 +320,18 @@
     </div>
 
     <script>
+        // Bulletproof Failsafe Timer (starts immediately)
+        const fallbackTimer = setTimeout(() => {
+            const spinnerWrapper = document.querySelector('#admin-login .fa-circle-notch');
+            if (spinnerWrapper && spinnerWrapper.parentElement) {
+                spinnerWrapper.parentElement.style.display = 'none';
+            }
+            const debugEl = document.getElementById('debug-email');
+            if (debugEl) debugEl.textContent = '(Timeout/Error)';
+            const errEl = document.getElementById('login-error');
+            if (errEl) errEl.style.display = 'block';
+        }, 5000);
+
         let globalProfiles = [];
         let globalLogs = [];
         let userChartInstance = null;
@@ -327,17 +339,12 @@
 
         // Auto login check
         document.addEventListener('DOMContentLoaded', async () => {
-            const currentUser = localStorage.getItem('currentUserEmail');
-            
-            // Bulletproof Failsafe Timeout (5 seconds)
-            const fallbackTimer = setTimeout(() => {
-                const spinnerWrapper = document.querySelector('#admin-login .fa-circle-notch');
-                if (spinnerWrapper && spinnerWrapper.parentElement) {
-                    spinnerWrapper.parentElement.style.display = 'none';
-                }
-                document.getElementById('debug-email').textContent = currentUser || '(Timeout/Network Error)';
-                document.getElementById('login-error').style.display = 'block';
-            }, 5000);
+            let currentUser = null;
+            try {
+                currentUser = localStorage.getItem('currentUserEmail');
+            } catch(e) {
+                console.error("localStorage error:", e);
+            }
             
             if (currentUser) {
                 try {
