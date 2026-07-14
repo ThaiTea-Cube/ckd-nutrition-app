@@ -638,9 +638,9 @@ body {
     width: 100%;
     padding: 16px;
     border-radius: 100px;
-    background-color: #E0F2FE;
+    background-color: var(--surface-color);
     color: var(--text-high);
-    border: none;
+    border: 1px solid var(--border-color);
     font-family: 'Prompt', sans-serif;
     font-size: 16px;
     font-weight: 600;
