@@ -120,6 +120,72 @@
         .user-row:last-child {
             border-bottom: none;
         }
+        .user-row {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .user-row:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-content {
+            background: var(--surface-color);
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            border-radius: var(--radius-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-medium);
+            cursor: pointer;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+            background: var(--bg-base);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+        }
+        .log-item {
+            background: var(--bg-base);
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            font-size: 14px;
+            border: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
@@ -179,7 +245,55 @@
         </div>
     </div>
 
+    <!-- User Detail Modal -->
+    <div id="user-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modal-user-name" style="font-size: 20px;">ชื่อผู้ใช้</h2>
+                    <div id="modal-user-email" style="font-size: 13px; color: var(--text-medium);">email@example.com</div>
+                </div>
+                <button class="close-btn" onclick="closeUserModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--primary-color);">ข้อมูลส่วนตัว</h3>
+                <div class="info-grid">
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-medium);">น้ำหนัก</div>
+                        <strong id="modal-user-weight">-</strong> kg
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-medium);">ส่วนสูง</div>
+                        <strong id="modal-user-height">-</strong> cm
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-medium);">เพศ</div>
+                        <strong id="modal-user-gender">-</strong>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: var(--text-medium);">เป้าหมายโซเดียม</div>
+                        <strong id="modal-user-sodium-limit">2000</strong> mg
+                    </div>
+                </div>
+
+                <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--primary-color);">กราฟแนวโน้ม (7 วันล่าสุด)</h3>
+                <div style="margin-bottom: 24px; position: relative; height: 200px; width: 100%;">
+                    <canvas id="userLineChart"></canvas>
+                </div>
+
+                <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--primary-color);">ประวัติการกิน (วันล่าสุด)</h3>
+                <div id="modal-user-logs">
+                    <p style="color: var(--text-medium); font-size: 14px;">ไม่มีประวัติ...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let globalProfiles = [];
+        let globalLogs = [];
+        let userChartInstance = null;
+
         // Simple password for demo
         function checkAdminPassword() {
             const pwd = document.getElementById('admin-password').value;
@@ -211,6 +325,9 @@
                 const { data: logs, error: logErr } = await supabase.from('daily_logs').select('*');
                 if (logErr) throw logErr;
                 
+                globalProfiles = profiles;
+                globalLogs = logs;
+                
                 document.getElementById('total-users').textContent = profiles.length;
                 
                 const today = new Date();
@@ -238,7 +355,7 @@
             let html = '';
             profiles.forEach(p => {
                 html += `
-                    <div class="user-row">
+                    <div class="user-row" onclick="openUserModal('${p.email}')">
                         <div>
                             <strong>${p.name || 'ไม่ระบุชื่อ'}</strong>
                             <div style="font-size: 12px; color: var(--text-medium);">${p.email}</div>
@@ -358,6 +475,90 @@
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });
+        }
+
+        function openUserModal(email) {
+            const user = globalProfiles.find(p => p.email === email);
+            if (!user) return;
+            
+            document.getElementById('modal-user-name').textContent = user.name || 'ไม่ระบุชื่อ';
+            document.getElementById('modal-user-email').textContent = user.email;
+            document.getElementById('modal-user-weight').textContent = user.weight || '?';
+            document.getElementById('modal-user-height').textContent = user.height || '?';
+            document.getElementById('modal-user-gender').textContent = user.gender === 'male' ? 'ชาย' : (user.gender === 'female' ? 'หญิง' : '-');
+            
+            let limits = {};
+            try { limits = JSON.parse(user.limits || '{}'); } catch(e){}
+            document.getElementById('modal-user-sodium-limit').textContent = limits.sodium || 2000;
+            
+            // Filter logs for this user
+            const userLogs = globalLogs.filter(l => l.email === email);
+            
+            // Render User Specific Chart
+            const last7Days = [];
+            for(let i=6; i>=0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                last7Days.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+            }
+            
+            const pData = [];
+            const sData = [];
+            last7Days.forEach(date => {
+                const logForDate = userLogs.find(l => l.date === date);
+                if (logForDate) {
+                    pData.push(logForDate.protein || 0);
+                    sData.push((logForDate.sodium || 0) / 10);
+                } else {
+                    pData.push(0);
+                    sData.push(0);
+                }
+            });
+            
+            if (userChartInstance) userChartInstance.destroy();
+            userChartInstance = new Chart(document.getElementById('userLineChart'), {
+                type: 'line',
+                data: {
+                    labels: last7Days.map(d => d.substring(5)),
+                    datasets: [
+                        { label: 'โปรตีน (g)', data: pData, borderColor: '#10B981', tension: 0.3 },
+                        { label: 'โซเดียม (100mg)', data: sData, borderColor: '#3B82F6', tension: 0.3 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+            
+            // Render recent meals (from latest log)
+            // Sort userLogs descending by date
+            const sortedLogs = [...userLogs].sort((a,b) => b.date.localeCompare(a.date));
+            const logsContainer = document.getElementById('modal-user-logs');
+            logsContainer.innerHTML = '';
+            
+            if (sortedLogs.length === 0) {
+                logsContainer.innerHTML = '<p style="color: var(--text-medium); font-size: 14px;">ไม่มีประวัติการกิน</p>';
+            } else {
+                const latestLog = sortedLogs[0];
+                let meals = [];
+                try { meals = JSON.parse(latestLog.meals || '[]'); } catch(e){}
+                
+                let html = `<div style="font-size:13px; margin-bottom:8px; color:var(--text-medium);">บันทึกล่าสุด: ${latestLog.date}</div>`;
+                if (meals.length === 0) {
+                    html += '<p style="font-size:14px;">(ไม่พบรายการอาหารในวันนี้)</p>';
+                }
+                meals.forEach(m => {
+                    html += `<div class="log-item">
+                        <strong>${m.name}</strong> 
+                        <div style="color:var(--text-medium); font-size: 12px; margin-top: 4px;">โปรตีน ${m.protein}g | โซเดียม ${m.sodium}mg</div>
+                    </div>`;
+                });
+                logsContainer.innerHTML = html;
+            }
+            
+            document.getElementById('user-modal').style.display = 'flex';
+        }
+        
+        function closeUserModal() {
+            document.getElementById('user-modal').style.display = 'none';
         }
     </script>
 </body>
