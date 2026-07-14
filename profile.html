@@ -433,21 +433,9 @@
             }, 3000);
         }
 
-        // รายชื่ออีเมลที่มีสิทธิ์เข้าถึงระบบหลังบ้าน (Admin Emails)
-        const ADMIN_EMAILS = [
-            'chonprecha2006@gmail.com',
-            'chonprecha.sudjai@g.swu.ac.th',
-            'friend@example.com'
-        ];
-
         const currentUserEmail = localStorage.getItem('currentUserEmail');
         
         if (currentUserEmail) {
-            // Check if admin to show button
-            if (ADMIN_EMAILS.includes(currentUserEmail.toLowerCase())) {
-                document.getElementById('admin-dashboard-btn').style.display = 'flex';
-            }
-            
             (async () => {
                 try {
                     const { data, error } = await supabase
@@ -482,13 +470,24 @@
                         document.getElementById('display-details').textContent = `อายุ ${data.age || '-'} ปี • น้ำหนัก ${data.weight || '-'} กก. • ระยะที่ ${stageText || '-'}`;
                         
                         if(data.limits) {
-                            document.getElementById('limits-card').style.display = 'block';
-                            document.getElementById('limit-protein').textContent = data.limits.protein;
-                            document.getElementById('limit-water').textContent = data.limits.water.toLocaleString();
-                            document.getElementById('limit-carb').textContent = data.limits.carb;
-                            document.getElementById('limit-sodium').textContent = data.limits.sodium.toLocaleString();
-                            document.getElementById('limit-potassium').textContent = data.limits.potassium.toLocaleString();
-                            document.getElementById('limit-energy').textContent = data.limits.energy.toLocaleString();
+                            try {
+                                const parsedLimits = typeof data.limits === 'string' ? JSON.parse(data.limits) : data.limits;
+                                
+                                // Check for Admin Status
+                                if (parsedLimits.is_admin === true) {
+                                    document.getElementById('admin-dashboard-btn').style.display = 'flex';
+                                }
+                                
+                                document.getElementById('limits-card').style.display = 'block';
+                                document.getElementById('limit-protein').textContent = parsedLimits.protein;
+                                document.getElementById('limit-water').textContent = parsedLimits.water.toLocaleString();
+                                document.getElementById('limit-carb').textContent = parsedLimits.carb;
+                                document.getElementById('limit-sodium').textContent = parsedLimits.sodium.toLocaleString();
+                                document.getElementById('limit-potassium').textContent = parsedLimits.potassium.toLocaleString();
+                                document.getElementById('limit-energy').textContent = parsedLimits.energy.toLocaleString();
+                            } catch(e) {
+                                console.error('Error parsing limits', e);
+                            }
                             
                             // Show health card and populate
                             document.getElementById('health-card').style.display = 'block';

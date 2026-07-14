@@ -297,8 +297,11 @@
                             <input type="number" id="edit-protein" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-base); color: var(--text-high);">
                         </div>
                     </div>
-                    <button onclick="saveUserLimits()" style="width: 100%; padding: 10px; background: var(--primary-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                    <button onclick="saveUserLimits()" style="width: 100%; padding: 10px; background: var(--primary-color); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 8px;">
                         บันทึกการเปลี่ยนแปลง
+                    </button>
+                    <button id="toggle-admin-btn" onclick="toggleAdminStatus()" style="width: 100%; padding: 10px; background: rgba(245, 158, 11, 0.1); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        👑 เลื่อนขั้นเป็นแอดมิน
                     </button>
                     <p id="edit-success-msg" style="color: var(--success-color); font-size: 12px; text-align: center; margin-top: 8px; display: none;">บันทึกสำเร็จ!</p>
                 </div>
@@ -317,30 +320,38 @@
     </div>
 
     <script>
-        // รายชื่ออีเมลที่มีสิทธิ์เข้าถึงระบบหลังบ้าน (Admin Emails)
-        const ADMIN_EMAILS = [
-            'chonprecha2006@gmail.com',
-            'chonprecha.sudjai@g.swu.ac.th',
-            'friend@example.com' // <-- เปลี่ยนเป็นอีเมลเพื่อนที่นี่
-        ];
-
         let globalProfiles = [];
         let globalLogs = [];
         let userChartInstance = null;
         let currentEditingEmail = null;
 
         // Auto login check
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const currentUser = localStorage.getItem('currentUserEmail');
-            if (currentUser && ADMIN_EMAILS.includes(currentUser.toLowerCase())) {
-                document.getElementById('admin-login').style.display = 'none';
-                document.getElementById('admin-content').style.display = 'block';
-                loadAdminData();
-            } else {
-                document.querySelector('#admin-login .fa-circle-notch').parentElement.style.display = 'none';
-                document.getElementById('debug-email').textContent = currentUser || '(ไม่ได้ล็อกอิน)';
-                document.getElementById('login-error').style.display = 'block';
+            if (currentUser) {
+                // Fetch to check admin status
+                const { data } = await supabase.from('profiles').select('limits').eq('email', currentUser.toLowerCase()).single();
+                let isAdmin = false;
+                if (data && data.limits) {
+                    try {
+                        const parsed = typeof data.limits === 'string' ? JSON.parse(data.limits) : data.limits;
+                        if (parsed.is_admin === true || currentUser.toLowerCase() === 'chonprecha2006@gmail.com') { // Failsafe
+                            isAdmin = true;
+                        }
+                    } catch(e) {}
+                }
+                
+                if (isAdmin) {
+                    document.getElementById('admin-login').style.display = 'none';
+                    document.getElementById('admin-content').style.display = 'block';
+                    loadAdminData();
+                    return;
+                }
             }
+            
+            document.querySelector('#admin-login .fa-circle-notch').parentElement.style.display = 'none';
+            document.getElementById('debug-email').textContent = currentUser || '(ไม่ได้ล็อกอิน)';
+            document.getElementById('login-error').style.display = 'block';
         });
 
         // Set Chart defaults for dark mode support
@@ -386,10 +397,19 @@
             
             let html = '';
             profiles.forEach(p => {
+                let isAdmin = false;
+                if (p.limits) {
+                    try {
+                        const parsed = typeof p.limits === 'string' ? JSON.parse(p.limits) : p.limits;
+                        if (parsed.is_admin === true) isAdmin = true;
+                    } catch(e) {}
+                }
+                const adminBadge = isAdmin ? ' <span style="background: rgba(245,158,11,0.15); color: #F59E0B; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; border: 1px solid rgba(245,158,11,0.3);">แอดมิน 👑</span>' : '';
+                
                 html += `
                     <div class="user-row" onclick="openUserModal('${p.email}')">
                         <div>
-                            <strong>${p.name || 'ไม่ระบุชื่อ'}</strong>
+                            <strong>${p.name || 'ไม่ระบุชื่อ'}</strong>${adminBadge}
                             <div style="font-size: 12px; color: var(--text-medium);">${p.email}</div>
                         </div>
                         <div style="text-align: right; font-size: 13px; color: var(--text-medium);">
@@ -540,9 +560,24 @@
             document.getElementById('modal-user-gender').textContent = user.gender === 'male' ? 'ชาย' : (user.gender === 'female' ? 'หญิง' : '-');
             
             let limits = {};
-            try { limits = JSON.parse(user.limits || '{}'); } catch(e){}
+            try { limits = typeof user.limits === 'string' ? JSON.parse(user.limits || '{}') : (user.limits || {}); } catch(e){}
+            
             const sodiumLimit = limits.sodium || 2000;
             const proteinLimit = limits.protein || 40;
+            const isAdmin = limits.is_admin === true;
+            
+            const adminBtn = document.getElementById('toggle-admin-btn');
+            if (isAdmin) {
+                adminBtn.innerHTML = '❌ ถอดยศแอดมิน';
+                adminBtn.style.color = '#EF4444';
+                adminBtn.style.background = 'rgba(239, 68, 68, 0.1)';
+                adminBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+            } else {
+                adminBtn.innerHTML = '👑 เลื่อนขั้นเป็นแอดมิน';
+                adminBtn.style.color = '#F59E0B';
+                adminBtn.style.background = 'rgba(245, 158, 11, 0.1)';
+                adminBtn.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+            }
             
             document.getElementById('modal-user-sodium-limit').textContent = sodiumLimit;
             document.getElementById('modal-user-protein-limit').textContent = proteinLimit;
@@ -666,6 +701,52 @@
             } catch (err) {
                 console.error("Error updating limits:", err);
                 alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            }
+        async function toggleAdminStatus() {
+            if (!currentEditingEmail) return;
+            
+            const user = globalProfiles.find(p => p.email === currentEditingEmail);
+            if (!user) return;
+            
+            let currentLimits = {};
+            try { currentLimits = typeof user.limits === 'string' ? JSON.parse(user.limits || '{}') : (user.limits || {}); } catch(e){}
+            
+            currentLimits.is_admin = !currentLimits.is_admin; // Toggle boolean
+            
+            // Cannot remove yourself if it's the last one? We won't strictly block it, but good to know
+            if (currentEditingEmail.toLowerCase() === 'chonprecha2006@gmail.com' && !currentLimits.is_admin) {
+                if (!confirm("คุณกำลังจะถอดยศตัวเอง แน่ใจหรือไม่? (คุณยังมีสิทธิ์ฉุกเฉินอยู่)")) {
+                    return;
+                }
+            }
+            
+            const limitsStr = JSON.stringify(currentLimits);
+            
+            try {
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({ limits: limitsStr })
+                    .eq('email', currentEditingEmail);
+                    
+                if (error) throw error;
+                
+                // Update local data
+                user.limits = limitsStr;
+                
+                // Refresh Modal UI
+                openUserModal(currentEditingEmail);
+                
+                // Refresh List UI
+                renderUserList(globalProfiles);
+                
+                const msg = document.getElementById('edit-success-msg');
+                msg.textContent = currentLimits.is_admin ? "เลื่อนขั้นเป็นแอดมินสำเร็จ!" : "ถอดยศแอดมินสำเร็จ!";
+                msg.style.display = 'block';
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                
+            } catch (err) {
+                console.error("Error toggling admin:", err);
+                alert("เกิดข้อผิดพลาดในการเปลี่ยนยศแอดมิน");
             }
         }
     </script>
