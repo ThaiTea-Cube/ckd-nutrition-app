@@ -474,7 +474,7 @@
                                 const parsedLimits = typeof data.limits === 'string' ? JSON.parse(data.limits) : data.limits;
                                 
                                 // Check for Admin Status
-                                if (parsedLimits.is_admin === true) {
+                                if (parsedLimits.is_admin === true || currentUserEmail.toLowerCase() === 'chonprecha2006@gmail.com') {
                                     document.getElementById('admin-dashboard-btn').style.display = 'flex';
                                 }
                                 
