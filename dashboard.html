@@ -736,6 +736,8 @@
                 console.error("Error updating limits:", err);
                 alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
             }
+        } // <-- Added missing closing brace for saveUserLimits()
+
         async function toggleAdminStatus() {
             if (!currentEditingEmail) return;
             
