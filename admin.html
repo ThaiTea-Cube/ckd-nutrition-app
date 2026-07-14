@@ -328,6 +328,17 @@
         // Auto login check
         document.addEventListener('DOMContentLoaded', async () => {
             const currentUser = localStorage.getItem('currentUserEmail');
+            
+            // Bulletproof Failsafe Timeout (5 seconds)
+            const fallbackTimer = setTimeout(() => {
+                const spinnerWrapper = document.querySelector('#admin-login .fa-circle-notch');
+                if (spinnerWrapper && spinnerWrapper.parentElement) {
+                    spinnerWrapper.parentElement.style.display = 'none';
+                }
+                document.getElementById('debug-email').textContent = currentUser || '(Timeout/Network Error)';
+                document.getElementById('login-error').style.display = 'block';
+            }, 5000);
+            
             if (currentUser) {
                 try {
                     // Fetch to check admin status
@@ -350,6 +361,7 @@
                     }
                     
                     if (isAdmin) {
+                        clearTimeout(fallbackTimer);
                         document.getElementById('admin-login').style.display = 'none';
                         document.getElementById('admin-content').style.display = 'block';
                         loadAdminData();
@@ -360,6 +372,7 @@
                 }
             }
             
+            clearTimeout(fallbackTimer);
             const spinnerWrapper = document.querySelector('#admin-login .fa-circle-notch');
             if (spinnerWrapper && spinnerWrapper.parentElement) {
                 spinnerWrapper.parentElement.style.display = 'none';
