@@ -283,6 +283,11 @@
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
             </button>
             
+            <!-- Admin Dashboard Button -->
+            <a href="admin.html" id="admin-dashboard-btn" class="btn-edit-minimal" style="right: 104px; display: none; color: #F59E0B; background-color: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
+                <i class="fa-solid fa-crown"></i>
+            </a>
+            
             <div class="profile-avatar-container" id="avatar-upload-trigger" style="cursor: pointer; position: relative;">
                 <img src="https://ui-avatars.com/api/?name=User&background=0D8BFF&color=fff" alt="Profile" class="profile-avatar" id="profile-avatar">
                 <div style="position: absolute; bottom: 0; right: 0; background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border: 2px solid white;">
@@ -428,9 +433,21 @@
             }, 3000);
         }
 
+        // รายชื่ออีเมลที่มีสิทธิ์เข้าถึงระบบหลังบ้าน (Admin Emails)
+        const ADMIN_EMAILS = [
+            'chonprecha2006@gmail.com',
+            'chonprecha.sudjai@g.swu.ac.th',
+            'friend@example.com'
+        ];
+
         const currentUserEmail = localStorage.getItem('currentUserEmail');
         
         if (currentUserEmail) {
+            // Check if admin to show button
+            if (ADMIN_EMAILS.includes(currentUserEmail.toLowerCase())) {
+                document.getElementById('admin-dashboard-btn').style.display = 'flex';
+            }
+            
             (async () => {
                 try {
                     const { data, error } = await supabase
