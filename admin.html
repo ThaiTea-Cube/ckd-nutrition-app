@@ -448,20 +448,40 @@
                 options: { responsive: true }
             });
 
-            // 3. Pie Chart: Within Limits vs Exceeded (Simple heuristic: sodium < 2000 & protein within limit)
+            // 3. Pie Chart: Within Limits vs Exceeded
             let withinLimit = 0;
             let exceeded = 0;
             
             logs.forEach(log => {
-                // simple check
-                if ((log.sodium || 0) <= 2000 && (log.sugar || 0) <= 24) {
+                // Skip days where the user hasn't recorded any food (all zero)
+                if ((log.protein || 0) === 0 && (log.sodium || 0) === 0 && (log.carb || 0) === 0) {
+                    return; // Skip empty logs
+                }
+                
+                // Find user profile to get specific limits
+                const user = profiles.find(p => p.email === log.email);
+                let limits = { sodium: 2000, protein: 40 }; // Defaults
+                if (user && user.limits) {
+                    try { 
+                        const parsed = JSON.parse(user.limits);
+                        if (parsed.sodium) limits.sodium = parsed.sodium;
+                        if (parsed.protein) limits.protein = parsed.protein;
+                    } catch(e) {}
+                }
+                
+                // Check if they stayed within limits for both protein and sodium
+                if ((log.sodium || 0) <= limits.sodium && (log.protein || 0) <= limits.protein) {
                     withinLimit++;
                 } else {
                     exceeded++;
                 }
             });
             
-            if(withinLimit === 0 && exceeded === 0) { withinLimit = 1; } // avoid empty chart
+            if(withinLimit === 0 && exceeded === 0) { 
+                // Fallback if no logs exist
+                withinLimit = 1; 
+                exceeded = 0; 
+            }
             
             new Chart(document.getElementById('pieChart'), {
                 type: 'doughnut',
