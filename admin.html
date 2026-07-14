@@ -329,27 +329,41 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const currentUser = localStorage.getItem('currentUserEmail');
             if (currentUser) {
-                // Fetch to check admin status
-                const { data } = await supabase.from('profiles').select('limits').eq('email', currentUser.toLowerCase()).single();
-                let isAdmin = false;
-                if (data && data.limits) {
-                    try {
-                        const parsed = typeof data.limits === 'string' ? JSON.parse(data.limits) : data.limits;
-                        if (parsed.is_admin === true || currentUser.toLowerCase() === 'chonprecha2006@gmail.com') { // Failsafe
-                            isAdmin = true;
+                try {
+                    // Fetch to check admin status
+                    const { data, error } = await supabase.from('profiles').select('limits').eq('email', currentUser.toLowerCase()).single();
+                    
+                    let isAdmin = false;
+                    
+                    // Always allow the failsafe email regardless of DB result
+                    if (currentUser.toLowerCase() === 'chonprecha2006@gmail.com') {
+                        isAdmin = true;
+                    } else if (data && data.limits) {
+                        try {
+                            const parsed = typeof data.limits === 'string' ? JSON.parse(data.limits) : data.limits;
+                            if (parsed.is_admin === true) {
+                                isAdmin = true;
+                            }
+                        } catch(e) {
+                            console.error("Error parsing limits", e);
                         }
-                    } catch(e) {}
-                }
-                
-                if (isAdmin) {
-                    document.getElementById('admin-login').style.display = 'none';
-                    document.getElementById('admin-content').style.display = 'block';
-                    loadAdminData();
-                    return;
+                    }
+                    
+                    if (isAdmin) {
+                        document.getElementById('admin-login').style.display = 'none';
+                        document.getElementById('admin-content').style.display = 'block';
+                        loadAdminData();
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Error fetching profile for admin check:", err);
                 }
             }
             
-            document.querySelector('#admin-login .fa-circle-notch').parentElement.style.display = 'none';
+            const spinnerWrapper = document.querySelector('#admin-login .fa-circle-notch');
+            if (spinnerWrapper && spinnerWrapper.parentElement) {
+                spinnerWrapper.parentElement.style.display = 'none';
+            }
             document.getElementById('debug-email').textContent = currentUser || '(ไม่ได้ล็อกอิน)';
             document.getElementById('login-error').style.display = 'block';
         });
