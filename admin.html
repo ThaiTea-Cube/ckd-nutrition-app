@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบหลังบ้าน - CKD Nutrition</title>
-    <link rel="stylesheet" href="styles.css?v=9">
+    <link rel="stylesheet" href="styles.css?v=11">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="theme.js?v=9"></script>
+    <script src="theme.js?v=11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase_client.js"></script>
 
@@ -199,7 +199,7 @@
                 <i class="fa-solid fa-circle-notch fa-spin text-primary" style="font-size: 24px;"></i>
             </div>
             <p id="login-error" style="color: var(--error-base); font-size: 14px; margin-top: 20px; display: none;">
-                อีเมลของคุณไม่มีสิทธิ์เข้าถึงระบบหลังบ้าน<br>
+                อีเมล <strong id="debug-email"></strong> ไม่มีสิทธิ์เข้าถึงระบบหลังบ้าน<br>
                 <a href="index.html" style="color: var(--primary-color); display: inline-block; margin-top: 12px; text-decoration: none;">กลับหน้าหลัก</a>
             </p>
         </div>
@@ -338,6 +338,7 @@
                 loadAdminData();
             } else {
                 document.querySelector('#admin-login .fa-circle-notch').parentElement.style.display = 'none';
+                document.getElementById('debug-email').textContent = currentUser || '(ไม่ได้ล็อกอิน)';
                 document.getElementById('login-error').style.display = 'block';
             }
         });
