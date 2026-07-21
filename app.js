@@ -1,3 +1,5 @@
+/* global supabase, Chart */
+
 document.addEventListener('DOMContentLoaded', () => {
     // Basic interaction for Bottom Nav
     const navItems = document.querySelectorAll('.nav-item');

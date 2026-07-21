@@ -1,3 +1,5 @@
+/* global Chart */
+
 // theme.js
 function initTheme() {
     let currentTheme = localStorage.getItem('theme');
